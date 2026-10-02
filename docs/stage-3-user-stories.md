@@ -2,10 +2,10 @@
 
 ## Project Metadata
 
-**Project Name:** Air Quality Monitoring System - LPG Leak Detection MVP
-**Team ID:** SAU-0226-Team 15
-**Repository:** `air-quality-monitoring-system`  
-**Document date:** 01 October 2026
+* **Project Name:** Air Quality Monitoring System - LPG Leak Detection MVP
+* **Team ID:** SAU-0226-Team 15
+* **Repository:** `air-quality-monitoring-system`  
+* **Document date:** 01 October 2026
 
 ---
 
