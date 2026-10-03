@@ -81,7 +81,7 @@ The frontend interface design requires four primary wireframes/mockups to be des
 3. **Device Details & Real-Time Monitoring**
 * **Scope:** Single-device live data view.
 * **Associated Stories:** `US-02`, `US-04`
-* **Key Elements:** Live estimated LPG concentration gauge/chart ($PPM$), threshold indicator, real-time visual alert banner.
+* **Key Elements:** Live estimated LPG concentration gauge/chart (ppm), threshold indicator, real-time visual alert banner.
 
 
 4. **Historical Readings & Alert Logs**
