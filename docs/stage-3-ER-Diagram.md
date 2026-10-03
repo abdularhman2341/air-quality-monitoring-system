@@ -1,3 +1,4 @@
+```mermaid
 erDiagram
     USERS ||--o{ DEVICES : "owns"
     DEVICES ||--o{ SENSOR_READINGS : "generates"
@@ -33,3 +34,4 @@ erDiagram
         float threshold_limit "Configured safety limit crossed"
         timestamp triggered_at "Leak trigger timestamp"
     }
+```
