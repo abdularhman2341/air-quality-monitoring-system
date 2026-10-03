@@ -13,6 +13,7 @@ The LPG Leak Detection System utilizes a relational **PostgreSQL** database desi
 
 ## 2. Table Specifications
 
+```markdown
 ### 2.1 Table: `users`
 Stores registered kitchen/restaurant managers with hashed credentials.
 
@@ -61,7 +62,7 @@ Stores incident records logged whenever $PPM \ge \text{Threshold}$.
 | `lpg_ppm` | `REAL` | NOT NULL | Gas concentration recorded during the incident |
 | `threshold_limit` | `REAL` | NOT NULL | Configured limit crossed (e.g., `1000.0`) |
 | `triggered_at` | `TIMESTAMPTZ` | DEFAULT `CURRENT_TIMESTAMP` | Incident start timestamp |
-
+```
 ---
 
 ## 3. SQL Data Definition Language (DDL Script)
