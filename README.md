@@ -52,7 +52,7 @@ Live delivery and database persistence are separate paths. A displayed event doe
 | Area | Technology | Purpose |
 | --- | --- | --- |
 | Microcontroller | ESP32 | Read sensors, control local indicators, and publish telemetry. |
-| Sensors | MQ-135 and MQ-138 | Selected models for the planned prototype; measurement interpretation requires validation. |
+| Sensors | TGS2610 and MQ-138 | Selected models for the planned prototype; measurement interpretation requires validation. |
 | Local indicators | Buzzer and LED | Audible and visual threshold alerts. |
 | Telemetry | MQTT over TLS | Transfer device observations and events. |
 | Broker | Eclipse Mosquitto, suggested | Route MQTT messages by topic. |
