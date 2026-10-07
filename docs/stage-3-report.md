@@ -18,6 +18,8 @@ This report is the single Stage 3 deliverable. It turns the objectives, scope, a
 6. [SCM and QA Plans](#6-scm-and-qa-plans)
 7. [Technical Justifications](#7-technical-justifications)
 
+[Sources](#sources)
+
 ---
 
 ## 1. User Stories and Mockups
@@ -857,3 +859,40 @@ Example ACL rule, with each device's broker username set to its MAC: `pattern wr
 - **QoS 1 acknowledgement:** PUBACK confirms that the broker received a message, not that the backend stored it.
 - **JWT revocation:** A token cannot be revoked before it expires; the 24-hour expiry limits the exposure.
 - **Placeholder values:** The reading interval, `threshold_ppm`, and pagination limits in Section 5 are placeholders until the alarm threshold is set in Stage 4 (see the note at the end of Section 5).
+
+---
+
+## Sources
+
+### Stage 3 Working Files
+
+The team's original Stage 3 working files are kept in the [`diagrams`](diagrams/) folder, together with the diagram images and their editable draw.io sources. This report is the maintained version: if a working file and the report differ, the report applies.
+
+| Working file | Report section |
+| --- | --- |
+| [User Stories and Figma Plan](diagrams/stage-3-user-stories.md) | 1 |
+| [System Architecture](diagrams/stage-3-System-Architecture.md) | 2 |
+| [System Components](diagrams/stage-3-System-Component.md) | 3.1 |
+| [Class Diagram](diagrams/stage-3-Mermaid-UML-Class-Diagram.md) | 3.3 |
+| [ER Diagram](diagrams/stage-3-ER-Diagram.md) | 3.4 |
+| [Database Schema](diagrams/stage-3-database-schema.md) | 3.5 |
+| [Sequence Diagrams](diagrams/stage-3-Sequence-Diagrams.md) | 4 |
+| [API Specifications](diagrams/stage-3-Document-External-and-Internal-APIs.md) | 5 |
+| [SCM and QA Plan](diagrams/stage-3-SCM-QA-Plan.md) | 6 |
+
+### Diagram Sources (draw.io)
+
+[Architecture](diagrams/architecture.drawio) · [Sequence 1](diagrams/seq-1-sensor-reading.drawio) · [Sequence 2](diagrams/seq-2-gas-leak-alarm.drawio) · [Sequence 3](diagrams/seq-3-login-history.drawio)
+
+### Project Documents
+
+- [Stage 1 Report: Team Formation and Idea Development](stage-1-report.md)
+- [Stage 2: Project Charter](stage-2%20project%20charter.md)
+- [Figma design file](https://www.figma.com/design/k5UNJkKtfeYt9HBuPiIXqY/Untitled?node-id=0-1&p=f&t=Mank3nL8NS1aXxNC-0)
+
+### Technical References
+
+- [MQTT protocol overview](https://mqtt.org/)
+- [Eclipse Mosquitto configuration](https://mosquitto.org/man/mosquitto-conf-5.html)
+- [MQTT.js documentation](https://github.com/mqttjs/MQTT.js)
+- [Socket.IO delivery guarantees](https://socket.io/docs/v4/delivery-guarantees/)

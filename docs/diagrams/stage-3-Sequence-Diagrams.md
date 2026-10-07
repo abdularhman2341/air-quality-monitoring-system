@@ -1,0 +1,14 @@
+# Section 3: Sequence Diagrams
+
+## Sequence 1: Sensor Reading → Live Dashboard (US-02, US-07, US-08)
+![Sequence 1](seq-1-sensor-reading.png)
+
+## Sequence 2: Gas Leak Alarm and Connection Loss (US-03, US-04, US-08)
+![Sequence 2](seq-2-gas-leak-alarm.png)
+
+## Sequence 3: User Login & Device History (US-01, US-06, US-07, US-09)
+![Sequence 3](seq-3-login-history.png)
+
+Topics, payloads, endpoints, and status codes follow the [API Specifications](stage-3-Document-External-and-Internal-APIs.md).
+
+Editable sources (draw.io): [seq-1](seq-1-sensor-reading.drawio) · [seq-2](seq-2-gas-leak-alarm.drawio) · [seq-3](seq-3-login-history.drawio)
