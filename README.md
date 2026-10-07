@@ -34,8 +34,8 @@ The prototype is intended for development and evaluation. It is not a substitute
 
 ![System architecture](docs/diagrams/architecture.png)
 
-1. **Sensor → ESP32:** The ESP32 reads the sensor, calculates `lpg_ppm`, and evaluates the alarm locally.
-2. **ESP32 → Mosquitto:** Each device publishes to its own topic `devices/{device_id}/telemetry` over MQTT/TLS with its own credentials.
+1. **Sensor → ESP32:** The ESP32 reads the sensor, estimates `lpg_ppm_est`, and decides the alarm locally.
+2. **ESP32 → Mosquitto:** Each device publishes readings, alarm events, and status to `aqms/devices/{mac}/…` over MQTT/TLS with its own credentials; the broker reports a dropped device through its Last Will.
 3. **Mosquitto → Backend:** MQTT.js receives messages; the backend validates the payload and the device.
 4. **Backend ↔ PostgreSQL:** Readings, alerts, and device status are stored through `pg`.
 5. **Backend → Dashboard:** Socket.IO delivers live events only to the device owner's room.
@@ -64,6 +64,8 @@ The prototype is intended for development and evaluation. It is not a substitute
 | 3 | [System Architecture](docs/stage-3-System-Architecture.md) · [System Components](docs/stage-3-System-Component.md) |
 | 3 | [Class Diagram](docs/stage-3-Mermaid-UML-Class-Diagram.md) · [ER Diagram](docs/stage-3-ER-Diagram.md) · [Database Schema](docs/stage-3-database-schema.md) |
 | 3 | [Sequence Diagrams](docs/stage-3-Sequence-Diagrams.md) |
+| 3 | [API Specifications](docs/stage-3-Document-External-and-Internal-APIs.md) |
+| 3 | [SCM and QA Plan](docs/stage-3-SCM-QA-Plan.md) |
 
 ## Project Timeline (2026)
 
