@@ -66,6 +66,8 @@ Explicitly excluded features per the Project Charter to maintain scope integrity
 
 The frontend interface design requires four primary wireframes/mockups to be designed in Figma and linked in the final submission:
 
+https://www.figma.com/design/k5UNJkKtfeYt9HBuPiIXqY/Untitled?node-id=0-1&p=f&t=Mank3nL8NS1aXxNC-0
+
 1. **Sign-In Screen (Authentication)**
 * **Scope:** User login interface implementing authentication and authorization logic.
 * **Associated Stories:** `US-01`, `US-06`
