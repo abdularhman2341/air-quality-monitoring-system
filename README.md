@@ -1,112 +1,89 @@
-# Air Quality Monitoring System
+# Air Quality Monitoring System — LPG Leak Detection MVP
 
-An IoT monitoring project that connects ESP32 sensor observations to local alerts, a live web dashboard, and historical records.
+An IoT prototype that detects possible liquefied petroleum gas (LPG) leaks in restaurant and home kitchens, sounds a local alarm without depending on the internet, and shows live readings, alerts, and history on a web dashboard.
 
 **Holberton Portfolio Project — SAU-0226-Team 15**
 
-> **Current status: Documentation and planning only.** Software development, hardware assembly, and testing have not started. The architecture and features below describe the planned system.
+> **Current status: Stage 3 — Technical Documentation.** Implementation starts in Stage 4 (11 October 2026). The architecture and features below describe the planned system.
 
 ## Overview
 
-The project aims to combine sensor monitoring with a usable web interface. An ESP32 will collect sensor observations and control a local buzzer and LED. A custom Node.js backend will receive readings through MQTT, store them in PostgreSQL, and deliver live updates and alerts to a React dashboard.
+An ESP32 reads a Figaro TGS2610-D00 LPG sensor, calculates an estimated concentration, and controls a local buzzer and LED. It publishes readings over MQTT/TLS to a Mosquitto broker. A Node.js backend validates and stores them in PostgreSQL and pushes live readings and alerts to a React dashboard through Socket.IO.
 
-The team will build its own database schema, API, authentication, business logic, and frontend as part of the portfolio project.
+The project evolved from a broader air-quality concept (Stage 1) to LPG leak monitoring. See the [Project Charter](docs/stage-2%20project%20charter.md) for the reasoning and scope.
 
 ## Problem and Target Audience
 
-The initial audience is **owners and managers of independent automotive air-conditioning repair workshops in Riyadh**. The intended use case is to support inspections with an accessible view of sensor responses and a history of recorded observations.
+- **Restaurant owners** who need to monitor several kitchen devices from one account.
+- **Home-kitchen users** who need a local alarm and access to their device's history.
 
-The team's longer-term application interest includes refrigerant-leak monitoring. Gas-specific detection and concentration measurements depend on suitable sensor selection and validation; they are not established prototype capabilities at this stage.
+The prototype is intended for development and evaluation. It is not a substitute for an approved safety installation, and displayed concentrations are estimates until reference testing is completed.
 
-Indoor monitoring in homes, offices, clinics, and childcare facilities represents possible later expansion.
+## MVP Features
 
-## Planned MVP Features
-
-| Feature | Intended behavior |
-| --- | --- |
-| Sensor acquisition | Collect separately identified observations from sensors connected to an ESP32. |
-| Local alerts | Use a buzzer and LED when a configured prototype threshold is exceeded. Local evaluation will run on the ESP32 without depending on a cloud response. |
-| Live dashboard | Display recent readings, timestamps, connection state, and clearly labelled sensor-response indicators. |
-| Web alerts | Display a notification in the connected dashboard when a configured threshold condition is reported. |
-| Historical records | Store readings and alert events for later review by device, sensor, and time range. |
-| Authentication and authorization | Provide the team's own sign-in flow and enforce access to devices, readings, and live events. |
-| Device management | Register and manage devices and their attached sensors through the backend API. |
+| Feature | Behavior | User stories |
+| --- | --- | --- |
+| Local alarm | Buzzer and LED activate on the ESP32 when the threshold is reached, with or without internet. | US-03 |
+| Live dashboard | Current estimated PPM, latest reading time, and online/offline state per device. | US-02, US-08 |
+| Web alerts | Alert banner in the dashboard and a stored alert history. | US-04 |
+| History | Readings and alerts by device and date range. | US-07, US-09 |
+| Accounts and isolation | Sign-in with JWT; each account sees only its own devices. | US-01, US-06 |
+| Multiple devices | One account can register and monitor several devices. | US-05 |
 
 ## System Architecture
 
-![Air Quality Monitoring System architecture: sensors connect to an ESP32, which publishes through an MQTT broker to a Node.js backend serving a web dashboard and PostgreSQL.](docs/diagrams/air-quality-system-architecture.png)
+![System architecture](docs/diagrams/architecture.png)
 
-*Planned core data flow. The local buzzer and LED described above are additional ESP32 outputs and are not shown in this diagram.*
+1. **Sensor → ESP32:** The ESP32 reads the sensor, estimates `lpg_ppm_est`, and decides the alarm locally.
+2. **ESP32 → Mosquitto:** Each device publishes readings, alarm events, and status to `aqms/devices/{mac}/…` over MQTT/TLS with its own credentials; the broker reports a dropped device through its Last Will.
+3. **Mosquitto → Backend:** MQTT.js receives messages; the backend validates the payload and the device.
+4. **Backend ↔ PostgreSQL:** Readings, alerts, and device status are stored through `pg`.
+5. **Backend → Dashboard:** Socket.IO delivers live events only to the device owner's room.
+6. **Dashboard ↔ REST API:** Express (`/api/v1`) handles sign-in, devices, and history over HTTPS with JWT.
 
-1. **Sensors → ESP32:** The microcontroller reads the connected sensors and evaluates the configured local alert conditions.
-2. **ESP32 → MQTT broker:** The device publishes identifiable observations and relevant alert events over MQTT with TLS.
-3. **MQTT broker → Node.js:** The backend subscribes through MQTT.js and validates messages and device identity.
-4. **Node.js → Web dashboard:** Socket.IO delivers authorized live readings and web alerts.
-5. **Node.js ↔ PostgreSQL:** The backend stores observations and events and retrieves historical data through `pg`.
-6. **Dashboard ↔ HTTPS API:** Express handles authentication, device management, and historical queries.
+## Technology Stack
 
-Live delivery and database persistence are separate paths. A displayed event does not confirm that its database write has committed.
+| Area | Technology |
+| --- | --- |
+| Microcontroller | ESP32 DevKit V1 |
+| Sensor | Figaro TGS2610-D00 (LPG) |
+| Local indicators | Buzzer and LED |
+| Telemetry | MQTT over TLS, Eclipse Mosquitto |
+| Backend | Node.js, Express, MQTT.js |
+| Live updates | Socket.IO |
+| Database | PostgreSQL with `pg` |
+| Frontend | React, designed in Figma |
 
-## Planned Technology Stack
+## Documentation
 
-| Area | Technology | Purpose |
-| --- | --- | --- |
-| Microcontroller | ESP32 | Read sensors, control local indicators, and publish telemetry. |
-| Sensor | TGS2610  | Selected models for the planned prototype; measurement interpretation requires validation. |
-| Local indicators | Buzzer and LED | Audible and visual threshold alerts. |
-| Telemetry | MQTT over TLS | Transfer device observations and events. |
-| Broker | Eclipse Mosquitto, suggested | Route MQTT messages by topic. |
-| Backend | Node.js, Express, and MQTT.js | Implement the API, authentication, validation, and ingestion. |
-| Live updates | Socket.IO | Deliver readings and alerts to connected authorized clients. |
-| Frontend | React | Build the web dashboard. |
-| Database | PostgreSQL with `pg` | Store users, devices, sensors, readings, and alert events. |
-| Optional buffering | Redis Streams and a Node.js worker | Buffer and batch writes if recovery needs or measured traffic justify it. |
+| Stage | Document |
+| --- | --- |
+| 1 | [Idea Development Report](docs/stage-1-report.md) |
+| 2 | [Project Charter](docs/stage-2%20project%20charter.md) |
+| 3 | [User Stories & MoSCoW](docs/stage-3-user-stories.md) |
+| 3 | [System Architecture](docs/stage-3-System-Architecture.md) · [System Components](docs/stage-3-System-Component.md) |
+| 3 | [Class Diagram](docs/stage-3-Mermaid-UML-Class-Diagram.md) · [ER Diagram](docs/stage-3-ER-Diagram.md) · [Database Schema](docs/stage-3-database-schema.md) |
+| 3 | [Sequence Diagrams](docs/stage-3-Sequence-Diagrams.md) |
+| 3 | [API Specifications](docs/stage-3-Document-External-and-Internal-APIs.md) |
+| 3 | [SCM and QA Plan](docs/stage-3-SCM-QA-Plan.md) |
 
-## Measurement and Data Design
+## Project Timeline (2026)
 
-The data model will distinguish **devices**, their attached **sensors**, and individual **readings**. Observations will include device and sensor identifiers, an event identifier, capture time, raw value, and its actual unit or representation. Alert records will reference the relevant device, observation, and threshold condition.
-
-MQ-135 and MQ-138 respond to multiple gases and vapours. Initial displays will use raw readings or clearly labelled response indicators. The published [MQ-138 specification](https://www.winsen-sensor.com/product/mq138.html) describes targets such as toluene, acetone, alcohol, and hydrogen; it does not establish selective R-134a detection. Refrigerant identification, concentration values, and the meaning of alert thresholds require validation for the actual hardware and calibration method.
-
-## Security and Reliability Goals
-
-- Protect device telemetry with TLS and application requests with HTTPS.
-- Use device-specific credentials, topic permissions, and backend validation.
-- Enforce authorization on both API requests and live subscriptions.
-- Handle repeated MQTT messages through stable event identifiers and duplicate protection.
-- Show connection state and the time of the latest reading; refresh stored history after reconnecting.
-- Verify local alerts, message validation, persistence, and recovery during implementation.
-
-## Project Progression
-
-The project follows Holberton's five-stage structure:
-
-| Stage | Focus | Duration in the project overview |
-| --- | --- | --- |
-| 1 | Team Formation and Idea Development | 2 weeks |
-| 2 | Project Charter | 2 weeks |
-| 3 | Technical Documentation | 2 weeks |
-| 4 | MVP Development | 4 weeks |
-| 5 | Project Closure | 2 weeks |
-
-The current deliverables belong to **Stage 1**. Installation commands and startup instructions will be added when implementation begins and can be verified.
+| Stage | Dates |
+| --- | --- |
+| 1 — Team Formation and Idea Development | Completed |
+| 2 — Project Charter | 20–26 September |
+| 3 — Technical Documentation | 27 September – 10 October |
+| 4 — MVP Development | 11 October – 21 November |
+| 5 — Closure and Landing Page | 22 November – 5 December |
 
 ## Team
-
-**SAU-0226-Team 15**
 
 | Team Member | Role |
 | --- | --- |
 | Abdulrahman Asiri | Backend Developer |
-| Khalid Aloraini | Frontend Developer |
-| Abdulmalik Alaqeel | Hardware Developer & Project Manager |
-
-The team communicates through Discord and a WhatsApp group. Abdulmalik coordinates the project, while each member leads the assigned development area.
-
-## Documentation
-
-- [Stage 1 Report : Idea Development Documentation](docs/stage-1-report.md)
-- [Core architecture diagram](docs/diagrams/air-quality-system-architecture.png)
+| Khalid Aloraini | Frontend Designer and Developer |
+| Abdulmalik Alaqeel | Hardware Developer, Database Developer, and Project Manager |
 
 ## Technical References
 
@@ -114,5 +91,3 @@ The team communicates through Discord and a WhatsApp group. Abdulmalik coordinat
 - [Eclipse Mosquitto configuration](https://mosquitto.org/man/mosquitto-conf-5.html)
 - [MQTT.js documentation](https://github.com/mqttjs/MQTT.js)
 - [Socket.IO delivery guarantees](https://socket.io/docs/v4/delivery-guarantees/)
-- [Winsen MQ-135 specification](https://www.winsen-sensor.com/product/mq135.html)
-- [Winsen MQ-138 specification](https://www.winsen-sensor.com/product/mq138.html)
