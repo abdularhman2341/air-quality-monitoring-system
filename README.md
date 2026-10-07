@@ -60,12 +60,8 @@ The prototype is intended for development and evaluation. It is not a substitute
 | --- | --- |
 | 1 | [Idea Development Report](docs/stage-1-report.md) |
 | 2 | [Project Charter](docs/stage-2%20project%20charter.md) |
-| 3 | [User Stories & MoSCoW](docs/stage-3-user-stories.md) |
-| 3 | [System Architecture](docs/stage-3-System-Architecture.md) · [System Components](docs/stage-3-System-Component.md) |
-| 3 | [Class Diagram](docs/stage-3-Mermaid-UML-Class-Diagram.md) · [ER Diagram](docs/stage-3-ER-Diagram.md) · [Database Schema](docs/stage-3-database-schema.md) |
-| 3 | [Sequence Diagrams](docs/stage-3-Sequence-Diagrams.md) |
-| 3 | [API Specifications](docs/stage-3-Document-External-and-Internal-APIs.md) |
-| 3 | [SCM and QA Plan](docs/stage-3-SCM-QA-Plan.md) |
+| 3 | [Technical Documentation Report](docs/stage-3-report.md) |
+| | [1. User Stories and Mockups](docs/stage-3-report.md#1-user-stories-and-mockups) · [2. System Architecture](docs/stage-3-report.md#2-system-architecture) · [3. Components, Classes, and Database Design](docs/stage-3-report.md#3-components-classes-and-database-design) · [4. Sequence Diagrams](docs/stage-3-report.md#4-sequence-diagrams) · [5. API Specifications](docs/stage-3-report.md#5-api-specifications) · [6. SCM and QA Plans](docs/stage-3-report.md#6-scm-and-qa-plans) · [7. Technical Justifications](docs/stage-3-report.md#7-technical-justifications) |
 
 ## Project Timeline (2026)
 
