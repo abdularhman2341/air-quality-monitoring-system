@@ -6,7 +6,7 @@ The LPG Leak Detection System (`SAU-0226-Team 15`) is structured into four prima
 2. **MQTT Broker Tier:** Acts as an asynchronous message bus (e.g., Mosquitto) receiving low-latency telemetry payloads published by the ESP32 hardware via MQTT over TLS.
 3. **Backend API Tier:** A **Node.js/Express** application subscribing to the MQTT broker to ingest gas telemetry, process safety thresholds ($PPM \ge \text{Threshold}$), execute authentication logic, and log records to the database.
 4. **Database Tier:** A **PostgreSQL** relational database providing persistent time-series storage for sensor readings, registered devices, user accounts, and alert logs.
-5. **Frontend Web Tier:** A **React SPA Dashboard** rendering real-time gas gauges, device connectivity indicators, and historical trend tables via REST APIs.
+5. **Frontend Web Tier:** A **React SPA Dashboard** rendering real-time gas gauges, device connectivity indicators, and historical trend tables via REST and Socket.IO live events.
 
 ---
 
