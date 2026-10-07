@@ -13,7 +13,6 @@ The LPG Leak Detection System utilizes a relational **PostgreSQL** database desi
 
 ## 2. Table Specifications
 
-```markdown
 ### 2.1 Table: `users`
 Stores registered kitchen/restaurant managers with hashed credentials.
 
@@ -47,8 +46,11 @@ Time-series storage for continuous LPG telemetry sent from ESP32 sensors.
 | `id` | `BIGSERIAL` | PRIMARY KEY | Auto-incrementing time-series entry ID |
 | `device_id` | `VARCHAR(50)` | FOREIGN KEY (`devices.id`), NOT NULL | Originating ESP32 device ID |
 | `raw_adc` | `INTEGER` | NOT NULL, CHECK (`raw_adc BETWEEN 0 AND 4095`) | Unprocessed 12-bit ADC value |
-| `lpg_ppm` | `REAL` | NOT NULL | Calculated LPG concentration in Parts Per Million ($PPM$) |
+| `lpg_ppm` | `REAL` | NOT NULL | LPG concentration estimate calculated on the ESP32 ($PPM$) |
+| `captured_at` | `TIMESTAMPTZ` | NOT NULL | Time the reading was taken on the device (NTP-synchronized) |
 | `recorded_at` | `TIMESTAMPTZ` | DEFAULT `CURRENT_TIMESTAMP` | Timestamp of reading arrival at the backend |
+
+**Table constraint:** `UNIQUE (device_id, captured_at)` — MQTT QoS 1 can deliver the same message more than once; the backend inserts with `ON CONFLICT DO NOTHING` so a repeated message is stored only once.
 
 ---
 
@@ -62,4 +64,15 @@ Stores incident records logged whenever $PPM \ge \text{Threshold}$.
 | `lpg_ppm` | `REAL` | NOT NULL | Gas concentration recorded during the incident |
 | `threshold_limit` | `REAL` | NOT NULL | Configured limit crossed (e.g., `1000.0`) |
 | `triggered_at` | `TIMESTAMPTZ` | DEFAULT `CURRENT_TIMESTAMP` | Incident start timestamp |
-```
+
+---
+
+## 3. Indexes
+
+| Index | Columns | Supports |
+| :--- | :--- | :--- |
+| `idx_readings_device_time` | `sensor_readings (device_id, captured_at DESC)` | History by device and date range (`US-07`, `US-09`) and the latest reading per device (`US-02`) |
+| `idx_alerts_device_time` | `alert_events (device_id, triggered_at DESC)` | Alert history by device and date range (`US-04`, `US-09`) |
+| `idx_devices_user` | `devices (user_id)` | Listing a user's devices and ownership checks (`US-05`, `US-06`) |
+
+Device credentials for the MQTT broker are stored in the Mosquitto password file, not in this database, so the backend database never holds broker secrets.

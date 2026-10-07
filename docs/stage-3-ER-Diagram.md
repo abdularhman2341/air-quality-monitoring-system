@@ -23,7 +23,8 @@ erDiagram
         bigint id PK "Reading log identifier"
         string device_id FK "Source ESP32 device ID"
         int raw_adc "Unprocessed 12-bit ADC value"
-        float lpg_ppm "Estimated LPG concentration in PPM"
+        float lpg_ppm "Estimated LPG concentration in PPM (calculated on ESP32)"
+        timestamp captured_at "Reading time on the device (NTP)"
         timestamp recorded_at "Reading arrival timestamp"
     }
 
