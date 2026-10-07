@@ -1,137 +1,101 @@
-# Section 2.1: Backend Class Design (UML)
+# Section 2.1: Class Diagram
 
-The backend follows a layered design: **Controllers → Services → Repositories → PostgreSQL**.
-Every method called in the [Sequence Diagrams](stage-3-Sequence-Diagrams.md) is defined here, and every entity mirrors a table in the [ER Diagram](stage-3-ER-Diagram.md).
-
-The design is shown in five small diagrams so each one stays readable:
-
-| Diagram | Shows |
-| --- | --- |
-| 1.1 Overview | All classes and how the layers connect (no members) |
-| 1.2 REST API Layer | Middleware, controllers, and `AuthService` |
-| 1.3 Telemetry and Real-time Layer | MQTT ingestion, device, reading, and alert services, Socket.IO gateway |
-| 1.4 User and Account Model | The `User` class, its devices, and every class that creates, reads, or authenticates users |
-| 1.5 Data Layer | Device, reading, and alert repositories and the entities they return |
+The backend is designed around four domain classes that mirror the database tables in the [ER Diagram](stage-3-ER-Diagram.md). All four inherit common behavior from `BaseModel`. A thin service layer coordinates them and contains every method called in the [Sequence Diagrams](stage-3-Sequence-Diagrams.md).
 
 ---
 
-## 1. Mermaid UML Class Diagrams
-
-### 1.1 Overview
-
-This view shows the classes that hold behavior. The domain entities are data-only classes: `User` is detailed in **1.4 User and Account Model**, and `Device`, `Reading`, and `Alert` in **1.5 Data Layer**.
-
-```mermaid
-classDiagram
-    direction LR
-
-    class AuthMiddleware
-    class AuthController
-    class DeviceController
-    class ReadingController
-    class AlertController
-
-    class AuthService
-    class DeviceService
-    class ReadingService
-    class AlertService
-    class MqttSubscriberService
-    class RealtimeGateway
-
-    class UserRepository
-    class DeviceRepository
-    class ReadingRepository
-    class AlertRepository
-
-    AuthMiddleware --> AuthService
-    AuthController --> AuthService
-    DeviceController --> DeviceService
-    ReadingController --> ReadingService
-    AlertController --> AlertService
-
-    MqttSubscriberService --> DeviceService
-    MqttSubscriberService --> ReadingService
-    ReadingService --> AlertService
-    ReadingService --> DeviceService
-
-    DeviceService --> RealtimeGateway
-    ReadingService --> RealtimeGateway
-    AlertService --> RealtimeGateway
-
-    RealtimeGateway --> AuthService
-
-    AuthService --> UserRepository
-    DeviceService --> DeviceRepository
-    ReadingService --> ReadingRepository
-    AlertService --> AlertRepository
-```
-
----
-
-### 1.2 REST API Layer
+## 1. Domain Model
 
 ```mermaid
 classDiagram
     direction TB
 
-    class AuthMiddleware {
-        -AuthService authService
-        +requireAuth(req, res, next) void
+    class BaseModel {
+        <<abstract>>
+        +id
+        +save() void
+        +delete() void
+        +validate() Boolean
+        +toJSON() Object
     }
 
-    class AuthController {
-        -AuthService authService
-        +register(req: Request, res: Response) Promise~void~
-        +login(req: Request, res: Response) Promise~void~
-        +getProfile(req: Request, res: Response) Promise~void~
+    class User {
+        +String email
+        +String passwordHash
+        +Date createdAt
+        +register(email, password)$ User
+        +login(password) String
+        +updateProfile(data) void
+        +getDevices() List~Device~
     }
 
-    class DeviceController {
-        -DeviceService deviceService
-        +getDevices(req: Request, res: Response) Promise~void~
-        +registerDevice(req: Request, res: Response) Promise~void~
-        +getDeviceDetails(req: Request, res: Response) Promise~void~
+    class Device {
+        +UUID userId
+        +String name
+        +String status
+        +Date lastSeen
+        +register(userId, deviceId, name)$ Device
+        +markOnline() void
+        +markOffline() void
+        +isStale(timeoutSec) Boolean
+        +belongsTo(userId) Boolean
+        +getReadings(from, to) List~Reading~
+        +getLatestReading() Reading
     }
 
-    class ReadingController {
-        -ReadingService readingService
-        +getHistoricalReadings(req: Request, res: Response) Promise~void~
-        +getLatestReading(req: Request, res: Response) Promise~void~
+    class Reading {
+        +String deviceId
+        +Integer rawAdc
+        +Float lpgPpm
+        +Date capturedAt
+        +Date recordedAt
+        +record(deviceId, rawAdc, lpgPpm, capturedAt)$ Reading
+        +exceedsThreshold(threshold) Boolean
     }
 
-    class AlertController {
-        -AlertService alertService
-        +getAlertHistory(req: Request, res: Response) Promise~void~
+    class Alert {
+        +String deviceId
+        +Float lpgPpm
+        +Float thresholdLimit
+        +Date triggeredAt
+        +create(deviceId, lpgPpm, threshold)$ Alert
+        +getHistory(userId, filters)$ List~Alert~
     }
 
-    class AuthService {
-        -String jwtSecret
-        -String tokenExpiry
-        -UserRepository userRepository
-        +register(email: String, password: String) Promise~User~
-        +login(email: String, password: String) Promise~String~
-        +generateToken(userId: String) String
-        +verifyToken(token: String) Object
-        +hashPassword(password: String) Promise~String~
-        +comparePassword(raw: String, hashed: String) Promise~Boolean~
-    }
+    BaseModel <|-- User
+    BaseModel <|-- Device
+    BaseModel <|-- Reading
+    BaseModel <|-- Alert
 
-    class DeviceService
-    class ReadingService
-    class AlertService
-
-    AuthMiddleware --> AuthService : verifyToken()
-    AuthController --> AuthService : uses
-    DeviceController --> DeviceService : uses
-    ReadingController --> ReadingService : uses
-    AlertController --> AlertService : uses
+    User "1" --> "0..*" Device : owns
+    Device "1" --> "0..*" Reading : generates
+    Device "1" --> "0..*" Alert : triggers
 ```
 
-`DeviceService`, `ReadingService`, and `AlertService` are shown here by name only; their attributes and methods are defined in 1.3. Every route except `register` and `login` passes through `AuthMiddleware` first.
+### Class Descriptions
+
+| Class | Table | Responsibility | User stories |
+| --- | --- | --- | --- |
+| `BaseModel` | — | Abstract parent. Holds the primary key `id` and the shared persistence methods: `save()` inserts or updates the row, `delete()` removes it, `validate()` checks required fields and types before saving, and `toJSON()` returns the object for the API. | — |
+| `User` | `users` | A registered account. `register()` hashes the password with bcrypt and saves the user; `login()` compares the password and returns a JWT; `toJSON()` never includes `passwordHash`. `id` is a UUID. | US-01, US-05 |
+| `Device` | `devices` | One ESP32 unit owned by one user. Tracks connectivity: `markOnline()` updates `lastSeen`, `isStale()` detects a device that stopped sending, and `belongsTo()` enforces data isolation. `id` is the hardware identifier (e.g. `ESP32-A1B2C3`). | US-05, US-06, US-08 |
+| `Reading` | `sensor_readings` | One sensor observation. `lpgPpm` is calculated on the ESP32 and stored as received. `record()` ignores a repeated message with the same `(deviceId, capturedAt)`. | US-02, US-07 |
+| `Alert` | `alert_events` | One leak episode where `lpgPpm` reached the threshold. Stores the value and the threshold that was crossed. | US-04, US-09 |
+
+### Relationships
+
+| Relationship | Type | Meaning |
+| --- | --- | --- |
+| `BaseModel` ◁— `User`, `Device`, `Reading`, `Alert` | Inheritance | Every domain class reuses `save()`, `delete()`, `validate()`, and `toJSON()`. |
+| `User` 1 → 0..* `Device` | Association | A user owns zero or more devices; each device belongs to exactly one user (`US-14` sharing is out of scope). |
+| `Device` 1 → 0..* `Reading` | Association | A device produces a continuous series of readings. |
+| `Device` 1 → 0..* `Alert` | Association | A device can trigger many alerts over time, one per leak episode. |
 
 ---
 
-### 1.3 Telemetry and Real-time Layer
+## 2. Service Layer
+
+Services coordinate the domain classes for each use case. Their method names match the Sequence Diagrams exactly.
 
 ```mermaid
 classDiagram
@@ -139,207 +103,75 @@ classDiagram
 
     class MqttSubscriberService {
         -MQTTClient client
-        -ReadingService readingService
-        -DeviceService deviceService
         +connect() void
-        +subscribe(topic: String) void
-        +handleMessage(topic: String, payload: Buffer) void
+        +subscribe(topic) void
+        +handleMessage(topic, payload) void
     }
 
     class DeviceService {
-        -DeviceRepository deviceRepository
-        -RealtimeGateway realtime
-        +getUserDevices(userId: String) Promise~List~Device~~
-        +getDeviceById(deviceId: String) Promise~Device~
-        +registerDevice(userId: String, deviceData: Object) Promise~Device~
-        +updateDeviceStatus(deviceId: String, status: String) Promise~void~
-        +validateOwnership(userId: String, deviceId: String) Promise~Boolean~
-        +checkOfflineDevices(timeoutSec: Integer) Promise~void~
+        +getUserDevices(userId) List~Device~
+        +getDeviceById(deviceId) Device
+        +registerDevice(userId, deviceData) Device
+        +updateDeviceStatus(deviceId, status) void
+        +validateOwnership(userId, deviceId) Boolean
+        +checkOfflineDevices(timeoutSec) void
     }
 
     class ReadingService {
         -Float alarmThresholdPPM
-        -ReadingRepository readingRepository
-        -AlertService alertService
-        -DeviceService deviceService
-        -RealtimeGateway realtime
-        +processTelemetry(deviceId: String, rawAdc: Integer, lpgPpm: Float, capturedAt: Date) Promise~Reading~
-        +getHistoricalReadings(userId: String, deviceId: String, dateRange: Object) Promise~List~Reading~~
-        +getLatestReading(userId: String, deviceId: String) Promise~Reading~
+        +processTelemetry(deviceId, rawAdc, lpgPpm, capturedAt) Reading
+        +getHistoricalReadings(userId, deviceId, dateRange) List~Reading~
+        +getLatestReading(userId, deviceId) Reading
     }
 
     class AlertService {
-        -AlertRepository alertRepository
-        -RealtimeGateway realtime
         -Map activeAlerts
-        +triggerAlert(deviceId: String, lpgPpm: Float, threshold: Float) Promise~Alert~
-        +clearAlert(deviceId: String) void
-        +getAlertHistory(userId: String, filters: Object) Promise~List~Alert~~
+        +triggerAlert(deviceId, lpgPpm, threshold) Alert
+        +clearAlert(deviceId) void
+        +getAlertHistory(userId, filters) List~Alert~
     }
 
-    class AuthService
+    class AuthService {
+        -String jwtSecret
+        -String tokenExpiry
+        +generateToken(userId) String
+        +verifyToken(token) Object
+    }
 
     class RealtimeGateway {
         -SocketIOServer io
-        -AuthService authService
         +authenticateSocket(socket, next) void
-        +emitToOwner(userId: String, event: String, data: Object) void
+        +emitToOwner(userId, event, data) void
     }
 
+    MqttSubscriberService --> DeviceService : updates status
     MqttSubscriberService --> ReadingService : forwards telemetry
-    MqttSubscriberService --> DeviceService : updates last_seen/status
-    ReadingService --> AlertService : triggers if PPM >= Threshold
-    ReadingService --> DeviceService : validates device state
+    ReadingService --> AlertService : triggers if PPM >= threshold
+    ReadingService --> DeviceService : checks device
+    DeviceService --> RealtimeGateway : emits status
     ReadingService --> RealtimeGateway : emits reading
     AlertService --> RealtimeGateway : emits alert
-    DeviceService --> RealtimeGateway : emits status
-    RealtimeGateway --> AuthService : verifyToken()
+    RealtimeGateway --> AuthService : verifies JWT
 ```
 
----
+### Service Descriptions
 
-### 1.4 User and Account Model
+| Service | Uses | Responsibility | Sequence |
+| --- | --- | --- | --- |
+| `MqttSubscriberService` | `DeviceService`, `ReadingService` | Subscribes to `devices/+/telemetry`, validates each JSON message and the device identifier, and forwards valid readings. Invalid messages are logged and dropped. | 1, 2 |
+| `DeviceService` | `Device` | Device registration, ownership checks, and online/offline status. `checkOfflineDevices()` runs periodically and marks stale devices `offline`. | 1, 2, 3 |
+| `ReadingService` | `Reading` | Stores each reading, compares `lpgPpm` with `alarmThresholdPPM`, and returns history only after `validateOwnership()` succeeds. | 1, 2, 3 |
+| `AlertService` | `Alert` | Creates one alert per leak episode using `activeAlerts`; `clearAlert()` ends the episode when a normal reading arrives. | 2 |
+| `AuthService` | `User` | Issues and verifies the JWT that carries the user's `id`. | 3 |
+| `RealtimeGateway` | `AuthService` | Authenticates Socket.IO connections and sends `reading:new`, `alert:new`, and `device:status` only to the owner's room `user:{userId}`. | 1, 2 |
 
-```mermaid
-classDiagram
-    direction LR
+### REST Controllers
 
-    class User {
-        +UUID id
-        +String email
-        +String passwordHash
-        +Date createdAt
-    }
+Each controller reads the HTTP request, calls one service, and returns the status code and JSON. An authentication middleware verifies the JWT on every route except register and login, and passes `userId` to the controller.
 
-    class UserRepository {
-        -Pool db
-        +findByEmail(email: String) Promise~User~
-        +findById(id: String) Promise~User~
-        +create(user: Object) Promise~User~
-    }
-
-    class AuthService
-    class AuthController
-    class AuthMiddleware
-    class DeviceService
-    class Device
-
-    AuthController --> AuthService : register / login
-    AuthMiddleware --> AuthService : verifyToken()
-    AuthService --> UserRepository : uses
-    UserRepository ..> User : returns
-    DeviceService ..> User : validateOwnership(userId)
-    User "1" --> "0..*" Device : owns
-```
-
-| Element | Role |
-| --- | --- |
-| `User` | One registered account (restaurant owner or home-kitchen user). `email` is unique; only the bcrypt hash of the password is stored (`US-01`). |
-| `User` → `Device` | One user owns zero or more devices; each device belongs to exactly one user (`US-05`, `US-14` Won't Have). |
-| `UserRepository` | The only class that reads or writes the `users` table. |
-| `AuthService` | Hashes passwords on `register`, compares them on `login`, and issues the JWT that carries the user's `id`. |
-| `AuthMiddleware` | Verifies the JWT on every protected route and attaches `userId` to the request. |
-| `DeviceService.validateOwnership()` | Uses that `userId` to check that a requested device belongs to the user before any data is returned (`US-06`). |
-
-`passwordHash` is never returned by the API: controllers send only `id`, `email`, and `createdAt`.
-
----
-
-### 1.5 Data Layer
-
-```mermaid
-classDiagram
-    direction LR
-
-    class DeviceRepository {
-        -Pool db
-        +findById(id: String) Promise~Device~
-        +findByUser(userId: String) Promise~List~Device~~
-        +findByIdAndUser(id: String, userId: String) Promise~Device~
-        +create(device: Object) Promise~Device~
-        +updateStatus(id: String, status: String) Promise~void~
-        +findStale(timeoutSec: Integer) Promise~List~Device~~
-    }
-
-    class ReadingRepository {
-        -Pool db
-        +insert(reading: Object) Promise~Reading~
-        +findByDeviceAndRange(deviceId: String, from: Date, to: Date) Promise~List~Reading~~
-        +findLatest(deviceId: String) Promise~Reading~
-    }
-
-    class AlertRepository {
-        -Pool db
-        +insert(alert: Object) Promise~Alert~
-        +findByUser(userId: String, filters: Object) Promise~List~Alert~~
-    }
-
-    class User
-
-    class Device {
-        +String id
-        +UUID userId
-        +String name
-        +String status
-        +Date lastSeen
-    }
-
-    class Reading {
-        +BigInt id
-        +String deviceId
-        +Integer rawAdc
-        +Float lpgPpm
-        +Date capturedAt
-        +Date recordedAt
-    }
-
-    class Alert {
-        +Integer id
-        +String deviceId
-        +Float lpgPpm
-        +Float thresholdLimit
-        +Date triggeredAt
-    }
-
-    DeviceRepository ..> Device : returns
-    ReadingRepository ..> Reading : returns
-    AlertRepository ..> Alert : returns
-
-    User "1" --> "0..*" Device : owns
-    Device "1" --> "0..*" Reading : generates
-    Device "1" --> "0..*" Alert : triggers
-```
-
----
-
-## 2. Structural UML Class Relationships
-
-### 1. `MqttSubscriberService` → `ReadingService` & `DeviceService` (Association)
-Upon receiving a new MQTT packet from the ESP32 hardware via the telemetry or heartbeat topic, `MqttSubscriberService` parses the JSON payload and forwards the data to:
-* **`ReadingService`**: To persist the raw 12-bit ADC value and the estimated LPG gas concentration ($PPM$) calculated on the ESP32 into the time-series database. The backend does not recalculate PPM, so the local alarm and the web alert always use the same value.
-* **`DeviceService`**: To update the device's `last_seen` timestamp and set its operational network connectivity status to `online`.
-
----
-
-### 2. `ReadingService` → `AlertService` (Dependency / Conditional Trigger)
-`ReadingService` evaluates each ingested gas reading against configured safety limits. If the calculated gas level meets or exceeds the safety boundary ($PPM \ge \text{Threshold}$), `ReadingService` invokes `AlertService.triggerAlert()` to immediately create a persistent safety incident log within the `alert_events` audit table. `AlertService` records one alert per leak episode using `activeAlerts`; when a normal reading arrives, `ReadingService` calls `clearAlert()` to end the episode.
-
----
-
-### 3. `Controllers` → `Services` (Direct Dependency)
-To enforce strict **Separation of Concerns (SoC)** and multi-tenant data safety (`US-06`), HTTP REST API Controllers (`AuthController`, `DeviceController`, `ReadingController`, `AlertController`) delegate all core application processing, JWT validation, and database operations directly to their corresponding domain Service layers. Every service method that returns device data receives the authenticated `userId` from `AuthMiddleware` and checks ownership through `DeviceService.validateOwnership()` before querying (Sequence 3, steps 12–20).
-
----
-
-### 4. `Services` → `Repositories` (Data Access)
-Each Service uses exactly one Repository, and Repositories are the only classes that execute SQL through the `pg` connection pool. This keeps business logic (Backend Developer) separate from data-access code (Database Developer), as defined in the Project Charter, and lets services be unit-tested with mock repositories.
-
----
-
-### 5. `Services` → `RealtimeGateway` (Live Delivery)
-`DeviceService`, `ReadingService`, and `AlertService` publish live events (`device:status`, `reading:new`, `alert:new`) through `RealtimeGateway.emitToOwner()`. The gateway authenticates each Socket.IO connection with the user's JWT and sends events only to the owner's room `user:{userId}`, so the data-isolation rule (`US-06`) is enforced in one place.
-
----
-
-### 6. Offline Detection (`DeviceService.checkOfflineDevices()`)
-A periodic check finds devices whose `last_seen` is older than the timeout, sets them to `offline` through `updateDeviceStatus()`, and emits `device:status` to the owner (`US-08`, Sequence 2 steps 17–20).
+| Controller | Calls | Routes |
+| --- | --- | --- |
+| `AuthController` | `User`, `AuthService` | `register`, `login`, `getProfile` |
+| `DeviceController` | `DeviceService` | `getDevices`, `registerDevice`, `getDeviceDetails` |
+| `ReadingController` | `ReadingService` | `getHistoricalReadings`, `getLatestReading` |
+| `AlertController` | `AlertService` | `getAlertHistory` |
