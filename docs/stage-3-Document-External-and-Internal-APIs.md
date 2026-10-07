@@ -223,7 +223,7 @@ All errors use one shape:
 
 ---
 
-## 4.4 Real-Time Updates (Socket.IO)
+## 4.4 Real-Time Updates (WebSocket via Socket.IO)
 
 So the dashboard shows new readings and alerts without refreshing, the backend pushes events over Socket.IO. The client connects with its JWT, and the server places it only in rooms for that user's devices, so the O3 access rule applies here too.
 
