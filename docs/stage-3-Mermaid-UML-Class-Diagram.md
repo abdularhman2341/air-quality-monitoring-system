@@ -3,20 +3,23 @@
 The backend follows a layered design: **Controllers → Services → Repositories → PostgreSQL**.
 Every method called in the [Sequence Diagrams](stage-3-Sequence-Diagrams.md) is defined here, and every entity mirrors a table in the [ER Diagram](stage-3-ER-Diagram.md).
 
-The design is shown in four small diagrams so each one stays readable:
+The design is shown in five small diagrams so each one stays readable:
 
 | Diagram | Shows |
 | --- | --- |
 | 1.1 Overview | All classes and how the layers connect (no members) |
 | 1.2 REST API Layer | Middleware, controllers, and `AuthService` |
 | 1.3 Telemetry and Real-time Layer | MQTT ingestion, device, reading, and alert services, Socket.IO gateway |
-| 1.4 Data Layer | Repositories and the entities they return |
+| 1.4 User and Account Model | The `User` class, its devices, and every class that creates, reads, or authenticates users |
+| 1.5 Data Layer | Device, reading, and alert repositories and the entities they return |
 
 ---
 
 ## 1. Mermaid UML Class Diagrams
 
 ### 1.1 Overview
+
+This view shows the classes that hold behavior. The domain entities are data-only classes: `User` is detailed in **1.4 User and Account Model**, and `Device`, `Reading`, and `Alert` in **1.5 Data Layer**.
 
 ```mermaid
 classDiagram
@@ -54,6 +57,8 @@ classDiagram
     DeviceService --> RealtimeGateway
     ReadingService --> RealtimeGateway
     AlertService --> RealtimeGateway
+
+    RealtimeGateway --> AuthService
 
     AuthService --> UserRepository
     DeviceService --> DeviceRepository
@@ -145,6 +150,7 @@ classDiagram
         -DeviceRepository deviceRepository
         -RealtimeGateway realtime
         +getUserDevices(userId: String) Promise~List~Device~~
+        +getDeviceById(deviceId: String) Promise~Device~
         +registerDevice(userId: String, deviceData: Object) Promise~Device~
         +updateDeviceStatus(deviceId: String, status: String) Promise~void~
         +validateOwnership(userId: String, deviceId: String) Promise~Boolean~
@@ -158,8 +164,8 @@ classDiagram
         -DeviceService deviceService
         -RealtimeGateway realtime
         +processTelemetry(deviceId: String, rawAdc: Integer, lpgPpm: Float, capturedAt: Date) Promise~Reading~
-        +getHistoricalReadings(deviceId: String, dateRange: Object) Promise~List~Reading~~
-        +getLatestReading(deviceId: String) Promise~Reading~
+        +getHistoricalReadings(userId: String, deviceId: String, dateRange: Object) Promise~List~Reading~~
+        +getLatestReading(userId: String, deviceId: String) Promise~Reading~
     }
 
     class AlertService {
@@ -170,6 +176,8 @@ classDiagram
         +clearAlert(deviceId: String) void
         +getAlertHistory(userId: String, filters: Object) Promise~List~Alert~~
     }
+
+    class AuthService
 
     class RealtimeGateway {
         -SocketIOServer io
@@ -185,15 +193,23 @@ classDiagram
     ReadingService --> RealtimeGateway : emits reading
     AlertService --> RealtimeGateway : emits alert
     DeviceService --> RealtimeGateway : emits status
+    RealtimeGateway --> AuthService : verifyToken()
 ```
 
 ---
 
-### 1.4 Data Layer
+### 1.4 User and Account Model
 
 ```mermaid
 classDiagram
     direction LR
+
+    class User {
+        +UUID id
+        +String email
+        +String passwordHash
+        +Date createdAt
+    }
 
     class UserRepository {
         -Pool db
@@ -201,6 +217,39 @@ classDiagram
         +findById(id: String) Promise~User~
         +create(user: Object) Promise~User~
     }
+
+    class AuthService
+    class AuthController
+    class AuthMiddleware
+    class DeviceService
+    class Device
+
+    AuthController --> AuthService : register / login
+    AuthMiddleware --> AuthService : verifyToken()
+    AuthService --> UserRepository : uses
+    UserRepository ..> User : returns
+    DeviceService ..> User : validateOwnership(userId)
+    User "1" --> "0..*" Device : owns
+```
+
+| Element | Role |
+| --- | --- |
+| `User` | One registered account (restaurant owner or home-kitchen user). `email` is unique; only the bcrypt hash of the password is stored (`US-01`). |
+| `User` → `Device` | One user owns zero or more devices; each device belongs to exactly one user (`US-05`, `US-14` Won't Have). |
+| `UserRepository` | The only class that reads or writes the `users` table. |
+| `AuthService` | Hashes passwords on `register`, compares them on `login`, and issues the JWT that carries the user's `id`. |
+| `AuthMiddleware` | Verifies the JWT on every protected route and attaches `userId` to the request. |
+| `DeviceService.validateOwnership()` | Uses that `userId` to check that a requested device belongs to the user before any data is returned (`US-06`). |
+
+`passwordHash` is never returned by the API: controllers send only `id`, `email`, and `createdAt`.
+
+---
+
+### 1.5 Data Layer
+
+```mermaid
+classDiagram
+    direction LR
 
     class DeviceRepository {
         -Pool db
@@ -225,12 +274,7 @@ classDiagram
         +findByUser(userId: String, filters: Object) Promise~List~Alert~~
     }
 
-    class User {
-        +UUID id
-        +String email
-        +String passwordHash
-        +Date createdAt
-    }
+    class User
 
     class Device {
         +String id
@@ -257,7 +301,6 @@ classDiagram
         +Date triggeredAt
     }
 
-    UserRepository ..> User : returns
     DeviceRepository ..> Device : returns
     ReadingRepository ..> Reading : returns
     AlertRepository ..> Alert : returns
@@ -284,7 +327,7 @@ Upon receiving a new MQTT packet from the ESP32 hardware via the telemetry or he
 ---
 
 ### 3. `Controllers` → `Services` (Direct Dependency)
-To enforce strict **Separation of Concerns (SoC)** and multi-tenant data safety (`US-06`), HTTP REST API Controllers (`AuthController`, `DeviceController`, `ReadingController`, `AlertController`) delegate all core application processing, JWT validation, and database operations directly to their corresponding domain Service layers.
+To enforce strict **Separation of Concerns (SoC)** and multi-tenant data safety (`US-06`), HTTP REST API Controllers (`AuthController`, `DeviceController`, `ReadingController`, `AlertController`) delegate all core application processing, JWT validation, and database operations directly to their corresponding domain Service layers. Every service method that returns device data receives the authenticated `userId` from `AuthMiddleware` and checks ownership through `DeviceService.validateOwnership()` before querying (Sequence 3, steps 12–20).
 
 ---
 
