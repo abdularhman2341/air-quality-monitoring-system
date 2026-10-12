@@ -4,7 +4,7 @@ An IoT prototype that detects possible liquefied petroleum gas (LPG) leaks in re
 
 **Holberton Portfolio Project — SAU-0226-Team 15**
 
-> **Current status: Stage 3 — Technical Documentation.** Implementation starts in Stage 4 (11 October 2026). The architecture and features below describe the planned system.
+> **Current status: Stage 4 — MVP Development** (11 October – 21 November 2026).
 
 ## Overview
 
@@ -53,6 +53,60 @@ The prototype is intended for development and evaluation. It is not a substitute
 | Live updates | Socket.IO |
 | Database | PostgreSQL with `pg` |
 | Frontend | React, designed in Figma |
+
+## Getting Started (Local Development)
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) 22 or later
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (on Windows, enable WSL integration)
+- Git
+
+### 1. Clone and enter the repository
+
+```bash
+git clone https://github.com/abdularhman2341/air-quality-monitoring-system.git
+cd air-quality-monitoring-system
+git checkout develop
+```
+
+### 2. Start PostgreSQL and Mosquitto
+
+Make sure Docker Desktop is running, then:
+
+```bash
+docker compose up -d
+docker compose ps
+```
+
+Both `aqms-db` and `aqms-mqtt` should be running.
+
+### 3. Configure and run the backend
+
+```bash
+cp backend/.env.example backend/.env
+cd backend
+npm install
+npm run dev
+```
+
+### 4. Verify
+
+Open <http://localhost:3000/api/v1/health>. Expected response:
+
+```json
+{"status":"ok","database":"connected"}
+```
+
+### Useful commands
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Run the backend with auto-restart on file changes |
+| `npm start` | Run the backend without auto-restart (used in production) |
+| `docker compose up -d` | Start the database and MQTT broker |
+| `docker compose down` | Stop them (data is kept) |
+| `docker compose logs db` | Show database logs |
 
 ## Documentation
 
