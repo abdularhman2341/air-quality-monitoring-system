@@ -1,0 +1,8 @@
+# Real Wi-Fi and MQTT credentials (added in S1-07). Commit config.example.h only.
+config.h
+
+# Build output
+build/
+.pio/
+*.bin
+*.elf
