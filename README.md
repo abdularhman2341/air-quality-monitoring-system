@@ -87,6 +87,7 @@ Both `aqms-db` and `aqms-mqtt` should be running.
 cp backend/.env.example backend/.env
 cd backend
 npm install
+npm run migrate
 npm run dev
 ```
 
@@ -104,6 +105,7 @@ Open <http://localhost:3000/api/v1/health>. Expected response:
 | --- | --- |
 | `npm run dev` | Run the backend with auto-restart on file changes |
 | `npm start` | Run the backend without auto-restart (used in production) |
+| `npm run migrate` | Create or update the database tables (safe to run more than once) |
 | `docker compose up -d` | Start the database and MQTT broker |
 | `docker compose down` | Stop them (data is kept) |
 | `docker compose logs db` | Show database logs |

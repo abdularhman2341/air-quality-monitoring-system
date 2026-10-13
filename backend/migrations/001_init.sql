@@ -3,7 +3,6 @@
 -- Matches the data contract in 04-api-specifications.md.
 -- Run once on an empty database: psql "$DATABASE_URL" -f migrations/001_init.sql
 
-BEGIN;
 
 -- ---------------------------------------------------------------------------
 -- users: one account per person. Passwords are stored only as hashes.
@@ -88,4 +87,3 @@ CREATE INDEX alerts_device_time_idx ON alerts (device_id, started_at DESC);
 -- A device can have at most one open (still active) alert at a time.
 CREATE UNIQUE INDEX alerts_one_open_per_device ON alerts (device_id) WHERE ended_at IS NULL;
 
-COMMIT;
