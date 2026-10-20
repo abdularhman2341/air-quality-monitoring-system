@@ -1,19 +1,17 @@
 const express = require('express');
 const cors = require('cors');
-const pool = require('./db');
+const routes = require('./routes');
+const notFound = require('./middlewares/notFound');
+const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-app.get('/api/v1/health', async (req, res) => {
-  try {
-    await pool.query('SELECT 1');
-    res.json({ status: 'ok', database: 'connected' });
-  } catch (err) {
-    res.status(503).json({ status: 'error', database: 'disconnected' });
-  }
-});
+app.use('/api/v1', routes);
+
+app.use(notFound);
+app.use(errorHandler);
 
 module.exports = app;
