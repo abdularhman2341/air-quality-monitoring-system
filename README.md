@@ -110,6 +110,33 @@ Open <http://localhost:3000/api/v1/health>. Expected response:
 | `docker compose down` | Stop them (data is kept) |
 | `docker compose logs db` | Show database logs |
 
+## Backend Structure
+
+The backend follows the layers in the [Stage 3 class diagram](docs/stage-3-report.md#33-backend-class-diagram): a request goes from a route to a controller, the controller calls a service, and the service uses the models.
+
+```text
+backend/
+├── migrations/            SQL files applied in order by npm run migrate
+├── tests/                 Jest tests (S2-12)
+└── src/
+    ├── server.js          Starts the HTTP server
+    ├── app.js             Express app: middleware, /api/v1 routes, error handling
+    ├── config/db.js       Shared PostgreSQL connection pool
+    ├── scripts/migrate.js Migration runner
+    ├── routes/            URL → controller mapping, one file per resource
+    ├── controllers/       Read the request, call a service, send the response
+    ├── services/          Business logic shared by REST and MQTT
+    ├── models/            BaseModel and the four domain classes
+    ├── middlewares/       requireAuth, notFound, errorHandler
+    └── errors/            HttpError, used for every API error
+```
+
+Endpoints that are not built yet return `501` with the task that will implement them, for example:
+
+```json
+{ "error": { "code": "NOT_IMPLEMENTED", "message": "POST /auth/register is planned for S2-05." } }
+```
+
 ## Documentation
 
 | Stage | Document |

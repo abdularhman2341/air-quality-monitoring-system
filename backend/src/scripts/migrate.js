@@ -1,9 +1,9 @@
 require('dotenv').config({ quiet: true });
 const fs = require('fs');
 const path = require('path');
-const pool = require('./db');
+const pool = require('../config/db');
 
-const MIGRATIONS_DIR = path.join(__dirname, '..', 'migrations');
+const MIGRATIONS_DIR = path.join(__dirname, '..', '..', 'migrations');
 
 async function migrate() {
   const client = await pool.connect();
