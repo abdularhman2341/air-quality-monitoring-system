@@ -1,16 +1,21 @@
 const HttpError = require('../errors/HttpError');
+const Device = require('../models/Device');
 
 class DeviceService {
-  async getUserDevices(userId) {
-    throw HttpError.notImplemented('DeviceService.getUserDevices()', 'S2-06');
+    async getUserDevices(userId) {
+    return Device.findByOwner(userId);
   }
 
   async getDevice(userId, mac) {
-    throw HttpError.notImplemented('DeviceService.getDevice()', 'S2-06');
+    const device = await Device.findOwned(userId, Device.normalizeMac(mac));
+    if (!device) {
+      throw new HttpError(404, 'DEVICE_NOT_FOUND', 'Device not found.');
+    }
+    return device;
   }
 
   async linkDevice(userId, mac, pairingCode, name, location) {
-    throw HttpError.notImplemented('DeviceService.linkDevice()', 'S2-06');
+    return Device.link(userId, Device.normalizeMac(mac), pairingCode, name, location);
   }
 
   async updateDevice(userId, mac, data) {

@@ -1,15 +1,25 @@
 const HttpError = require('../errors/HttpError');
+const deviceService = require('../services/DeviceService');
+const { requireString, optionalString } = require('../utils/validate');
 
 async function list(req, res) {
-  throw HttpError.notImplemented('GET /devices', 'S2-06');
+  const devices = await deviceService.getUserDevices(req.userId);
+  res.json(devices);
 }
 
 async function link(req, res) {
-  throw HttpError.notImplemented('POST /devices', 'S2-06');
+  const body = req.body || {};
+  const mac = requireString(body.mac_address, 'mac_address', { max: 17 });
+  const pairingCode = requireString(body.pairing_code, 'pairing_code', { max: 32 });
+  const name = requireString(body.name, 'name', { max: 100 });
+  const location = optionalString(body.location, 'location', 150);
+  const device = await deviceService.linkDevice(req.userId, mac, pairingCode, name, location);
+  res.status(201).json(device);
 }
 
 async function get(req, res) {
-  throw HttpError.notImplemented('GET /devices/:mac', 'S2-06');
+  const device = await deviceService.getDevice(req.userId, req.params.mac);
+  res.json(device);
 }
 
 async function update(req, res) {
