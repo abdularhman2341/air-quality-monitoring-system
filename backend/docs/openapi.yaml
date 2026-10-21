@@ -1,0 +1,246 @@
+openapi: 3.0.3
+info:
+  title: AQMS API
+  version: 1.0.0
+  description: |
+    REST API for the LPG leak monitoring system.
+
+    To try a protected endpoint:
+    1. Call `POST /auth/login` and copy the `token` from the response.
+    2. Click **Authorize** and paste the token.
+servers:
+  - url: /api/v1
+tags:
+  - name: Health
+  - name: Auth
+  - name: Devices
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Check the server and database
+      responses:
+        '200':
+          description: Server is running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  database: { type: string, example: connected }
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Create an account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string, maxLength: 100, example: Demo User }
+                email: { type: string, format: email, example: demo@aqms.com }
+                password: { type: string, minLength: 8, maxLength: 72, example: Demo12345 }
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '409':
+          description: EMAIL_TAKEN
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Sign in and get a token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email, example: demo@aqms.com }
+                password: { type: string, example: Demo12345 }
+      responses:
+        '200':
+          description: Signed in. A new session is stored in the database.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string, description: JWT valid for 24 hours }
+                  user: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401':
+          description: INVALID_CREDENTIALS
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get the signed-in user
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: The signed-in user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Sign out and end the session
+      description: Sets `revoked_at` on the session, so the same token stops working.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204':
+          description: Signed out
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /devices:
+    get:
+      tags: [Devices]
+      summary: List my devices with their latest reading
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: The user's devices
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Device' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Devices]
+      summary: Link a device with its pairing code
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mac_address, pairing_code, name]
+              properties:
+                mac_address: { type: string, example: 'A4:CF:12:3B:9E:01' }
+                pairing_code: { type: string, example: '482913' }
+                name: { type: string, maxLength: 100, example: Kitchen }
+                location: { type: string, maxLength: 150, nullable: true, example: Floor 1 }
+      responses:
+        '201':
+          description: Device linked
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Device' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: DEVICE_NOT_FOUND (wrong MAC or pairing code)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: DEVICE_ALREADY_LINKED (linked to another account)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /devices/{mac}:
+    get:
+      tags: [Devices]
+      summary: Get one of my devices
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: mac
+          in: path
+          required: true
+          description: With or without colons
+          schema: { type: string, example: A4CF123B9E01 }
+      responses:
+        '200':
+          description: The device
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Device' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: DEVICE_NOT_FOUND (does not exist or belongs to someone else)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id: { type: string, example: '1' }
+        name: { type: string, example: Demo User }
+        email: { type: string, example: demo@aqms.com }
+
+    Device:
+      type: object
+      properties:
+        device_id: { type: string, example: A4CF123B9E01 }
+        mac_display: { type: string, example: 'A4:CF:12:3B:9E:01' }
+        name: { type: string, nullable: true, example: Kitchen }
+        location: { type: string, nullable: true, example: Floor 1 }
+        connection_state: { type: string, enum: [online, offline] }
+        last_reading_at: { type: string, format: date-time, nullable: true }
+        latest:
+          type: object
+          nullable: true
+          properties:
+            lpg_ppm_est: { type: number, example: 120 }
+            alarm_active: { type: boolean, example: false }
+            reading_time: { type: string, format: date-time }
+        estimate_validated: { type: boolean, example: false }
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string, example: VALIDATION_ERROR }
+            message: { type: string, example: email is required. }
+
+  responses:
+    ValidationError:
+      description: VALIDATION_ERROR or INVALID_MAC
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: MISSING_TOKEN, INVALID_TOKEN, or SESSION_ENDED
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
