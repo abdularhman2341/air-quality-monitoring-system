@@ -88,6 +88,7 @@ cp backend/.env.example backend/.env
 cd backend
 npm install
 npm run migrate
+npm run seed:devices
 npm run dev
 ```
 
@@ -105,10 +106,13 @@ Open <http://localhost:3000/api/v1/health>. Expected response:
 | --- | --- |
 | `npm run dev` | Run the backend with auto-restart on file changes |
 | `npm start` | Run the backend without auto-restart (used in production) |
-| `npm run migrate` | Create or update the database tables (safe to run more than once) |
+| `npm run migrate` | Apply the Prisma migrations to create or update the tables (safe to run more than once) |
+| `npm run seed:devices` | Add two demo devices with readings (pairing codes 482913 and 735104) |
+| `npm run db:migrate` | Create a new migration after changing `prisma/schema.prisma` (development only) |
 | `docker compose up -d` | Start the database and MQTT broker |
 | `docker compose down` | Stop them (data is kept) |
 | `docker compose logs db` | Show database logs |
+| `docker compose down -v` | Stop them and delete the local database |
 
 ## Backend Structure
 
@@ -116,13 +120,13 @@ The backend follows the layers in the [Stage 3 class diagram](docs/stage-3-repor
 
 ```text
 backend/
-├── migrations/            SQL files applied in order by npm run migrate
+├── prisma/                schema.prisma and migrations (npm run migrate)
 ├── tests/                 Jest tests (S2-12)
 └── src/
     ├── server.js          Starts the HTTP server
     ├── app.js             Express app: middleware, /api/v1 routes, error handling
     ├── config/db.js       Shared PostgreSQL connection pool
-    ├── scripts/migrate.js Migration runner
+    ├── scripts/seedDevices.js Demo devices with readings
     ├── routes/            URL → controller mapping, one file per resource
     ├── controllers/       Read the request, call a service, send the response
     ├── services/          Business logic shared by REST and MQTT
