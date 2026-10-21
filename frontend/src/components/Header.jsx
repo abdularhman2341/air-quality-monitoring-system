@@ -1,14 +1,18 @@
+import { Link } from 'react-router-dom'
+
 function Header() {
+
     return(
+
           <header>
             <div>
                 <h1>Gas Monitor</h1>
-                <p>MEASUR.MONITOR.BREATHE SAFER</p>
+                <p>MEASURE . MONITOR . BREATHE SAFER</p>
             </div>
             <nav>
-                <a href="/">Dashboard</a>
-                <a href="/add-sensor">Add Sensor</a>
-                <a href="/history">History & Alerts</a>
+                <Link to="/">Dashboard</Link>
+                <Link to="/add-sensor">Add Sensor</Link>
+                <Link to="/history">History & Alerts</Link>
             </nav>
             <div>
                 <span>System Online</span> 
