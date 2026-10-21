@@ -1,0 +1,120 @@
+// schema.prisma
+// Database schema for the LPG Leak Detection MVP.
+// Matches the data contract in docs/04-api-specifications.md.
+//
+// Field names are snake_case on purpose: they match the database columns
+// and the JSON field names in the API, so no mapping is needed.
+//
+// Some rules cannot be written in this file (CHECK constraints and a partial
+// unique index). They are added as SQL at the end of the init migration.
+// See prisma/README.md, "Custom constraints".
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ConnectionState {
+  online
+  offline
+
+  @@map("connection_state")
+}
+
+// One account per person. Passwords are stored only as hashes.
+// Emails are stored in lowercase (the backend lowercases them before saving),
+// so @unique also blocks the same email with different letter case.
+model User {
+  id            Int      @id @default(autoincrement())
+  name          String   @db.VarChar(100)
+  email         String   @unique @db.VarChar(255)
+  password_hash String
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+
+  devices  Device[]
+  sessions Session[]
+
+  @@map("users")
+}
+
+// Sign-in sessions. A session is valid until expires_at, unless revoked_at is set
+// (for example on logout). Sessions are deleted when their user is deleted.
+model Session {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    Int
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  expires_at DateTime  @db.Timestamptz(6)
+  revoked_at DateTime? @db.Timestamptz(6)
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("sessions")
+}
+
+// One row per ESP32, identified by its Wi-Fi MAC address
+// (12 uppercase hex characters, e.g. A4CF123B9E01).
+// owner_id is null until a user links the device with its pairing code.
+model Device {
+  device_id         String          @id @db.Char(12)
+  owner_id          Int?
+  pairing_code_hash String
+  name              String?         @db.VarChar(100)
+  location          String?         @db.VarChar(150)
+  connection_state  ConnectionState @default(offline)
+  online_since      DateTime?       @db.Timestamptz(6)
+  last_reading_at   DateTime?       @db.Timestamptz(6)
+  created_at        DateTime        @default(now()) @db.Timestamptz(6)
+
+  owner    User?     @relation(fields: [owner_id], references: [id], onDelete: SetNull)
+  readings Reading[]
+  alerts   Alert[]
+
+  @@index([owner_id])
+  @@map("devices")
+}
+
+// One row per MQTT message on aqms/devices/{mac}/readings.
+// lpg_ppm_est is an estimate whose accuracy has not been established.
+model Reading {
+  id             Int      @id @default(autoincrement())
+  device_id      String   @db.Char(12)
+  seq            Int?
+  sensor_raw_adc Int?
+  sensor_voltage Float?
+  rs_ro_ratio    Float?
+  lpg_ppm_est    Float
+  alarm_active   Boolean  @default(false)
+  reading_time   DateTime @db.Timestamptz(6) // device time (ts)
+  received_at    DateTime @default(now()) @db.Timestamptz(6) // server time
+
+  device Device @relation(fields: [device_id], references: [device_id], onDelete: Cascade)
+
+  // One reading per device per timestamp: QoS 1 may deliver a message twice.
+  // The backend inserts with createMany({ skipDuplicates: true }).
+  // Requires a valid device clock (firmware waits for NTP; backend falls back
+  // to received_at when ts is far from server time).
+  // Also serves dashboard and history queries (one device, by time).
+  @@unique([device_id, reading_time])
+  @@map("readings")
+}
+
+// One row per alarm episode (alarm_on until alarm_off).
+// ended_at stays null while the alarm is still active.
+model Alert {
+  id               Int       @id @default(autoincrement())
+  device_id        String    @db.Char(12)
+  started_at       DateTime  @db.Timestamptz(6)
+  ended_at         DateTime? @db.Timestamptz(6)
+  peak_lpg_ppm_est Float
+  threshold_ppm    Float
+
+  device Device @relation(fields: [device_id], references: [device_id], onDelete: Cascade)
+
+  @@index([device_id, started_at])
+  @@map("alerts")
+}
