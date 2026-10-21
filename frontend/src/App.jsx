@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Header from './components/Header'
 const API_URL = import.meta.env.VITE_API_URL
 function App () {
   const [status, setStatus] = useState('checking...')
@@ -9,11 +10,14 @@ function App () {
     .catch(() => setStatus('offline'))
   }, [])
   return (
-    <main>
-      <h1>LPG Leak Detection</h1>
-      <p>Backend: {status}</p>
-    </main>
-  )
+    <>
+    <Header />
+      <main>
+        <h1>LPG Leak Detection</h1>
+        <p>Backend: {status}</p>
+      </main>
+    </>
+   )
   }
   export default App
 
