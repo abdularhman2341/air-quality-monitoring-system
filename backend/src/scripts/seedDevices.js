@@ -18,10 +18,10 @@ async function seed() {
       const hash = await bcrypt.hash(device.pairingCode, 10);
       const inserted = await client.query(
         `INSERT INTO devices (device_id, pairing_code_hash, connection_state, online_since)
-         VALUES ($1, $2, $3::varchar, CASE WHEN $3::varchar = 'online' THEN now() END)
+                VALUES ($1, $2, $3, $4)
          ON CONFLICT (device_id) DO NOTHING
          RETURNING device_id`,
-        [device.id, hash, device.state],
+         [device.id, hash, device.state, device.state === 'online' ? new Date() : null],
       );
       if (inserted.rowCount === 0) {
         console.log(`${device.id} already exists, skipped`);
