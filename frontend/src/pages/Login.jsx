@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 
 function Login() {
@@ -42,6 +43,7 @@ function Login() {
         {submitting ? 'Signing in…' : 'Sign in'}
       </button>
       {error && <p role="alert">{error}</p>}
+      <p>No account yet? <Link to="/signup">Create one</Link></p>
     </form>
   )
 }

@@ -32,3 +32,9 @@
 .nav a:hover {
   color: #0f6b4a;
 }
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}

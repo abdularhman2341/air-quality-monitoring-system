@@ -3,6 +3,7 @@ import Header from './components/Header'
 import Dashboard from './pages/Dashboard'
 import History from './pages/History'
 import Login from './pages/Login'
+import Signup from './pages/Signup'
 import { ProtectedRoute, GuestRoute } from './auth/ProtectedRoute'
 
 function App() {
@@ -14,6 +15,7 @@ function App() {
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
           <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
+          <Route path="/signup" element={<GuestRoute><Signup /></GuestRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
