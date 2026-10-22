@@ -41,3 +41,12 @@
 .alerts-card h3 {
   color: #6ee7b7;
 }
+.readings-card h3 {
+  color: #e5e7eb;
+  text-align: center;
+}
+
+.readings-card > p {
+  color: #9ca3af;
+  text-align: center;
+}
