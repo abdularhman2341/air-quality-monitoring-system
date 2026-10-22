@@ -1,14 +1,21 @@
+import logo from '../assets/logo.svg'
+import { Link } from 'react-router-dom'
+import './Header.css'
+
 function Header() {
+
     return(
-          <header>
-            <div>
+
+          <header className='header'>
+            <div className='brand'>
+                <img src={logo} alt="Gas Monitor logo" width="40" />
                 <h1>Gas Monitor</h1>
-                <p>MEASUR.MONITOR.BREATHE SAFER</p>
+                <p>MEASURE . MONITOR . BREATHE SAFER</p>
             </div>
-            <nav>
-                <a href="/">Dashboard</a>
-                <a href="/add-sensor">Add Sensor</a>
-                <a href="/history">History & Alerts</a>
+            <nav className='nav'>
+                <Link to="/">Dashboard</Link>
+                <Link to="/add-sensor">Add Sensor</Link>
+                <Link to="/history">History & Alerts</Link>
             </nav>
             <div>
                 <span>System Online</span> 
