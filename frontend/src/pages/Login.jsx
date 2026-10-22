@@ -31,13 +31,13 @@ function Login() {
       <h1>Login</h1>
       <input
         type="email"
-        placeholder="البريد الإلكتروني"
+        placeholder="EMAIL"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
       />
       <input
         type="password"
-        placeholder="كلمة المرور"
+        placeholder="PASSWORD"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
