@@ -53,3 +53,33 @@
 .readings-card {
   min-height: 300px;
 }
+
+.status-card.status-alert {
+  background: #3b1215;
+  border-color: #7f1d1d;
+}
+
+.alerts-card.alerts-active {
+  background: #3b1215;
+  border-color: #7f1d1d;
+}
+
+.alerts-card.alerts-active h3 {
+  color: #fca5a5;
+}
+
+.status-card a {
+  display: block;
+  text-align: center;
+  color: #6ee7b7;
+}
+
+.device-picker {
+  display: block;
+  margin: 16px auto 0;
+  padding: 8px;
+}
+
+.dashboard-message {
+  text-align: center;
+}
