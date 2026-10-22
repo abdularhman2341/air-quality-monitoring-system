@@ -9,6 +9,12 @@ export class ApiError extends Error {
   }
 }
 
+let onUnauthorized = () => {}
+
+export function setUnauthorizedHandler (handler) {
+  onUnauthorized = handler
+}
+
 export function getToken () {
   try {
     return localStorage.getItem(TOKEN_KEY)
@@ -56,6 +62,9 @@ async function request (path, { method = 'GET', body } = {}) {
   const data = await res.json().catch(() => null)
   if (!res.ok) {
     const error = data?.error || {}
+    if (res.status === 401 && token) {
+      onUnauthorized()
+    }
     throw new ApiError(res.status, error.code || 'UNKNOWN_ERROR', error.message || 'Something went wrong.')
   }
   return data

@@ -1,22 +1,19 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { api, setToken } from '../api/client'
+import { useAuth } from '../auth/AuthContext'
 
 function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const navigate = useNavigate()
+  const { login } = useAuth()
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
     setSubmitting(true)
     try {
-      const data = await api.login(email, password)
-      setToken(data.token)
-      navigate('/')
+      await login(email, password)
     } catch (err) {
       setError(err.message)
     } finally {
