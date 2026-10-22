@@ -17,6 +17,10 @@ function Dashboard() {
                 <h3>No active alerts</h3>
                 <p>Everything looks normal.</p>
             </div>
+            <div className="readings-card">
+                <h3>Recent Readings</h3>
+                <p>Gas concentration over the last hour</p>
+            </div>
         </section>
     )
 }
