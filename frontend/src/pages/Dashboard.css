@@ -50,3 +50,6 @@
   color: #9ca3af;
   text-align: center;
 }
+.readings-card {
+  min-height: 300px;
+}
