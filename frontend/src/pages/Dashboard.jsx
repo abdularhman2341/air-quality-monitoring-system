@@ -1,3 +1,4 @@
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import './Dashboard.css'
 function Dashboard() {
     return (
