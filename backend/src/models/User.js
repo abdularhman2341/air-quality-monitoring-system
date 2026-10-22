@@ -45,12 +45,19 @@ class User extends BaseModel {
     return bcrypt.compare(password, this.password_hash);
   }
 
-  async updateProfile(data) {
-    throw HttpError.notImplemented('User.updateProfile()', 'S3');
+  async updateProfile({ name }) {
+    const { rows } = await pool.query(
+      `UPDATE users SET name = $2
+       WHERE id = $1
+       RETURNING id, name, email, password_hash, created_at`,
+      [this.id, name],
+    );
+    Object.assign(this, rows[0]);
+    return this;
   }
 
   toJSON() {
-    return { id: String(this.id), name: this.name, email: this.email };
+    return { id: String(this.id), name: this.name, email: this.email, created_at: this.created_at };
   }
 }
 
