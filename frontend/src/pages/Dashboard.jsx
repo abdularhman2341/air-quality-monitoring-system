@@ -1,0 +1,43 @@
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import './Dashboard.css'
+function Dashboard() {
+    return (
+        <section className="status-card">
+            <h2>SAFE</h2>
+            <p>No gas leak detected</p>
+
+            <div className="gas-card">
+                <h3>Gas Level</h3>
+                <p>184 ppm</p>
+            </div>
+            <div className="sensor-card">
+                <h3>Sensor  Status</h3>
+                <p>Active</p>
+                <p>GS-01</p>
+            </div>
+            <div className="alerts-card">
+                <h3>No active alerts</h3>
+                <p>Everything looks normal.</p>
+            </div>
+            <div className="readings-card">
+                <h3>Recent Readings</h3>
+                <p>Gas concentration over the last hour</p>
+                <ResponsiveContainer width="100%" height={250}>
+                    <LineChart data={[
+                        { time: '60m', ppm: 120 },
+                        { time: '45m', ppm: 140 },
+                        { time: '30m', ppm: 130 },
+                        { time: '15m', ppm: 160 },
+                        { time: 'Now', ppm: 184 },
+                ]}>
+                    <XAxis dataKey="time" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="ppm" stroke="#0f6b4a" />
+                 </LineChart>
+                </ResponsiveContainer>
+            </div>
+        </section>
+    )
+}
+export default Dashboard
