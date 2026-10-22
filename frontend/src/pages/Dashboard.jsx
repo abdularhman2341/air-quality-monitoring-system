@@ -22,6 +22,20 @@ function Dashboard() {
             <div className="readings-card">
                 <h3>Recent Readings</h3>
                 <p>Gas concentration over the last hour</p>
+                <ResponsiveContainer width="100%" height={250}>
+                    <LineChart data={[
+                        { time: '60m', ppm: 120 },
+                        { time: '45m', ppm: 140 },
+                        { time: '30m', ppm: 130 },
+                        { time: '15m', ppm: 160 },
+                        { time: 'Now', ppm: 184 },
+                ]}>
+                    <XAxis dataKey="time" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="ppm" stroke="#0f6b4a" />
+                 </LineChart>
+                </ResponsiveContainer>
             </div>
         </section>
     )
