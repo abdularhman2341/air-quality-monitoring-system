@@ -1,3 +1,4 @@
+import logo from '../assets/logo.svg'
 import { Link } from 'react-router-dom'
 import './Header.css'
 
@@ -7,6 +8,7 @@ function Header() {
 
           <header className='header'>
             <div className='brand'>
+                <img src={logo} alt="Gas Monitor logo" width="40" />
                 <h1>Gas Monitor</h1>
                 <p>MEASURE . MONITOR . BREATHE SAFER</p>
             </div>
