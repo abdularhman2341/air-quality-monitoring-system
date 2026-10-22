@@ -1,3 +1,12 @@
+.dashboard {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 32px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
 .status-card,
 .gas-card,
 .sensor-card,
@@ -7,9 +16,14 @@
   border: 1px solid #2a2d36;
   border-radius: 12px;
   padding: 20px;
-  margin: 16px auto;
-  max-width: 420px;
 }
+
+.status-card,
+.readings-card,
+.device-picker {
+  grid-column: 1 / -1;
+}
+
 .status-card h2 {
   color: #ffffff;
   font-size: 28px;
@@ -21,6 +35,26 @@
   color: #9ca3af;
   text-align: center;
 }
+
+.status-card a {
+  display: block;
+  text-align: center;
+  color: #6ee7b7;
+}
+
+.status-card.status-alert {
+  background: #3b1215;
+  border-color: #7f1d1d;
+}
+
+.gas-card h3,
+.sensor-card h3,
+.alerts-card h3 {
+  color: #e5e7eb;
+  text-align: center;
+  margin-top: 0;
+}
+
 .gas-card p {
   font-size: 32px;
   font-weight: 700;
@@ -28,11 +62,13 @@
   text-align: center;
   margin: 8px 0 0;
 }
+
 .sensor-card p {
   color: #9ca3af;
   text-align: center;
   margin: 4px 0;
 }
+
 .alerts-card {
   background: #14291f;
   border-color: #1f4d36;
@@ -41,15 +77,44 @@
 .alerts-card h3 {
   color: #6ee7b7;
 }
+
+.alerts-card p {
+  color: #9ca3af;
+  text-align: center;
+}
+
+.alerts-card.alerts-active {
+  background: #3b1215;
+  border-color: #7f1d1d;
+}
+
+.alerts-card.alerts-active h3 {
+  color: #fca5a5;
+}
+
 .readings-card h3 {
   color: #e5e7eb;
   text-align: center;
+  margin-top: 0;
 }
 
 .readings-card > p {
   color: #9ca3af;
   text-align: center;
 }
-.readings-card {
-  min-height: 300px;
+
+.device-picker {
+  justify-self: start;
+  padding: 8px;
+}
+
+.dashboard-message {
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
 }

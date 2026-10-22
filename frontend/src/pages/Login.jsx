@@ -1,29 +1,25 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext'
 
 function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const navigate = useNavigate()
-  function handleSubmit(e) {
-    e.preventDefault()
-        fetch('http://localhost:3000/api/v1/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.token){
-            localStorage.setItem('token', data.token);
-            navigate('/');
-        } else{
-            setError(data.error.message);
-        }
-       
-      })
+  const [submitting, setSubmitting] = useState(false)
+  const { login } = useAuth()
 
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setError('')
+    setSubmitting(true)
+    try {
+      await login(email, password)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -34,15 +30,20 @@ function Login() {
         placeholder="EMAIL"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
+        required
       />
       <input
         type="password"
         placeholder="PASSWORD"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
+        required
       />
-      <button type="submit">دخول</button>
-      {error && <p>{error}</p>}
+      <button type="submit" disabled={submitting}>
+        {submitting ? 'Signing in…' : 'Sign in'}
+      </button>
+      {error && <p role="alert">{error}</p>}
+      <p>No account yet? <Link to="/signup">Create one</Link></p>
     </form>
   )
 }

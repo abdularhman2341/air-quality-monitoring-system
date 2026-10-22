@@ -28,4 +28,11 @@ async function me(req, res) {
   res.json(user);
 }
 
-module.exports = { register, login, logout, me };
+async function updateMe(req, res) {
+  const body = req.body || {};
+  const name = requireString(body.name, 'name', { max: 100 });
+  const user = await authService.updateProfile(req.userId, { name });
+  res.json(user);
+}
+
+module.exports = { register, login, logout, me, updateMe };
