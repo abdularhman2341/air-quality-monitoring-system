@@ -14,6 +14,7 @@ tags:
   - name: Health
   - name: Auth
   - name: Devices
+  - name: Readings
 
 paths:
   /health:
@@ -191,6 +192,79 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
 
+  /devices/{mac}/readings:
+    get:
+      tags: [Readings]
+      summary: Reading history for one of my devices
+      description: Newest first. `from` and `to` are optional and inclusive.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: mac
+          in: path
+          required: true
+          description: With or without colons
+          schema: { type: string, example: A4CF123B9E01 }
+        - name: from
+          in: query
+          description: ISO 8601 start time
+          schema: { type: string, format: date-time, example: '2026-10-22T00:00:00Z' }
+        - name: to
+          in: query
+          description: ISO 8601 end time, must not be before `from`
+          schema: { type: string, format: date-time, example: '2026-10-23T00:00:00Z' }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 1000, default: 100 }
+      responses:
+        '200':
+          description: One page of readings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Reading' }
+                  page: { type: integer, example: 1 }
+                  limit: { type: integer, example: 100 }
+                  total: { type: integer, example: 30 }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: DEVICE_NOT_FOUND (does not exist or belongs to someone else)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /devices/{mac}/readings/latest:
+    get:
+      tags: [Readings]
+      summary: Latest reading for one of my devices
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: mac
+          in: path
+          required: true
+          description: With or without colons
+          schema: { type: string, example: A4CF123B9E01 }
+      responses:
+        '200':
+          description: The most recent reading
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reading' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: DEVICE_NOT_FOUND, or NO_READINGS when the device has not sent any reading yet
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -223,6 +297,19 @@ components:
             alarm_active: { type: boolean, example: false }
             reading_time: { type: string, format: date-time }
         estimate_validated: { type: boolean, example: false }
+
+    Reading:
+      type: object
+      properties:
+        id: { type: integer, example: 30 }
+        seq: { type: integer, nullable: true, example: 30 }
+        reading_time: { type: string, format: date-time, description: Device time }
+        received_at: { type: string, format: date-time, description: Server time }
+        lpg_ppm_est: { type: number, example: 120, description: 'Estimate, not a validated measurement' }
+        alarm_active: { type: boolean, example: false }
+        sensor_raw_adc: { type: integer, nullable: true }
+        sensor_voltage: { type: number, nullable: true }
+        rs_ro_ratio: { type: number, nullable: true }
 
     Error:
       type: object
