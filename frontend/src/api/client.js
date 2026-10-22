@@ -75,6 +75,7 @@ export const api = {
   login: (email, password) => request('/auth/login', { method: 'POST', body: { email, password } }),
   logout: () => request('/auth/logout', { method: 'POST' }),
   me: () => request('/auth/me'),
+  updateMe: (data) => request('/auth/me', { method: 'PATCH', body: data }),
   listDevices: () => request('/devices'),
   linkDevice: (device) => request('/devices', { method: 'POST', body: device }),
   readings: (mac, params) => request(`/devices/${mac}/readings?${new URLSearchParams(params)}`),

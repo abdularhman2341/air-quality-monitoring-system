@@ -21,7 +21,7 @@ function Header() {
             <Link to="/history">History & Alerts</Link>
           </nav>
           <div className='user'>
-            <span>{user.name}</span>
+            <Link to="/profile">{user.name}</Link>
             <button onClick={logout}>Log Out</button>
           </div>
         </>
