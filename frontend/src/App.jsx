@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard'
 import History from './pages/History'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import AddSensor from './pages/AddSensor'
 import { ProtectedRoute, GuestRoute } from './auth/ProtectedRoute'
 
 function App() {
@@ -13,9 +14,10 @@ function App() {
       <main>
         <Routes>
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/add-sensor" element={<ProtectedRoute><AddSensor /></ProtectedRoute>} />
           <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
           <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
-          <Route path="/signup" element={<GuestRoute><Signup /></GuestRoute>} />
+          <Route path="/signup" element={<GuestRoute redirectTo="/add-sensor"><Signup /></GuestRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

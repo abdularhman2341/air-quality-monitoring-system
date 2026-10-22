@@ -14,7 +14,7 @@ export function ProtectedRoute({ children }) {
   return children
 }
 
-export function GuestRoute({ children }) {
+export function GuestRoute({ children, redirectTo = '/' }) {
   const { user, loading } = useAuth()
   const location = useLocation()
 
@@ -22,7 +22,7 @@ export function GuestRoute({ children }) {
     return <p>Loading…</p>
   }
   if (user) {
-    return <Navigate to={location.state?.from || '/'} replace />
+    return <Navigate to={location.state?.from || redirectTo} replace />
   }
   return children
 }
