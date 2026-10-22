@@ -21,3 +21,23 @@
   color: #9ca3af;
   text-align: center;
 }
+.gas-card p {
+  font-size: 32px;
+  font-weight: 700;
+  color: #ffffff;
+  text-align: center;
+  margin: 8px 0 0;
+}
+.sensor-card p {
+  color: #9ca3af;
+  text-align: center;
+  margin: 4px 0;
+}
+.alerts-card {
+  background: #14291f;
+  border-color: #1f4d36;
+}
+
+.alerts-card h3 {
+  color: #6ee7b7;
+}
