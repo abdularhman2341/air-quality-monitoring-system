@@ -1,3 +1,4 @@
+import './Dashboard.css'
 function Dashboard() {
     return (
         <section className="status-card">

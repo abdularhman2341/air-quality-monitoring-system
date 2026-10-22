@@ -1,0 +1,12 @@
+.status-card,
+.gas-card,
+.sensor-card,
+.alerts-card,
+.readings-card {
+  background: #1f2128;
+  border: 1px solid #2a2d36;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 16px auto;
+  max-width: 420px;
+}
