@@ -10,3 +10,14 @@
   margin: 16px auto;
   max-width: 420px;
 }
+.status-card h2 {
+  color: #ffffff;
+  font-size: 28px;
+  text-align: center;
+  margin: 0;
+}
+
+.status-card > p {
+  color: #9ca3af;
+  text-align: center;
+}
