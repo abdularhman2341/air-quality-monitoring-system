@@ -1,3 +1,12 @@
+.dashboard {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 32px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
 .status-card,
 .gas-card,
 .sensor-card,
@@ -7,10 +16,15 @@
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 20px;
-  margin: 16px auto;
-  max-width: 420px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
+
+.status-card,
+.readings-card,
+.device-picker {
+  grid-column: 1 / -1;
+}
+
 .status-card h2 {
   color: #1f2937;
   font-size: 28px;
@@ -19,9 +33,33 @@
 }
 
 .status-card > p {
-  color: #9ca3af;
+  color: #6b7280;
   text-align: center;
 }
+
+.status-card a {
+  display: block;
+  text-align: center;
+  color: #0f6b4a;
+}
+
+.status-card.status-alert {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.status-card.status-alert h2 {
+  color: #b91c1c;
+}
+
+.gas-card h3,
+.sensor-card h3,
+.alerts-card h3 {
+  color: #374151;
+  text-align: center;
+  margin-top: 0;
+}
+
 .gas-card p {
   font-size: 32px;
   font-weight: 700;
@@ -29,11 +67,13 @@
   text-align: center;
   margin: 8px 0 0;
 }
+
 .sensor-card p {
-  color: #9ca3af;
+  color: #6b7280;
   text-align: center;
   margin: 4px 0;
 }
+
 .alerts-card {
   background: #ecfdf5;
   border-color: #a7f3d0;
@@ -42,20 +82,44 @@
 .alerts-card h3 {
   color: #065f46;
 }
-.readings-card h3 {
-  color: #e5e7eb;
+
+.alerts-card p {
+  color: #6b7280;
   text-align: center;
 }
 
+.alerts-card.alerts-active {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.alerts-card.alerts-active h3 {
+  color: #b91c1c;
+}
+
+.readings-card h3 {
+  color: #374151;
+  text-align: center;
+  margin-top: 0;
+}
+
 .readings-card > p {
-  color: #9ca3af;
+  color: #6b7280;
   text-align: center;
 }
-.readings-card {
-  min-height: 300px;
+
+.device-picker {
+  justify-self: start;
+  padding: 8px;
 }
-.status-row {
-  display: flex;
-  gap: 16px;
-  justify-content: center;
+
+.dashboard-message {
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
 }

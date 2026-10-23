@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const BaseModel = require('./BaseModel');
 const HttpError = require('../errors/HttpError');
 const pool = require('../config/db');
+const Reading = require('./Reading');
 
 const MAC_PATTERN = /^[0-9A-F]{12}$/;
 
@@ -90,11 +91,11 @@ class Device extends BaseModel {
   }
 
   async getReadings(from, to, page, limit) {
-    throw HttpError.notImplemented('Device.getReadings()', 'S1-11');
+    return Reading.findByDevice(this.device_id, from, to, page, limit);
   }
 
   async getLatestReading() {
-    throw HttpError.notImplemented('Device.getLatestReading()', 'S1-11');
+    return Reading.findLatest(this.device_id);
   }
 
   toJSON() {

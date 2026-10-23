@@ -41,4 +41,31 @@ function optionalString(value, field, max) {
   return requireString(value, field, { max });
 }
 
-module.exports = { requireString, requireEmail, requirePassword, optionalString };
+function optionalDate(value, field) {
+  if (value === undefined || value === '') {
+    return null;
+  }
+  const date = new Date(value);
+  if (typeof value !== 'string' || Number.isNaN(date.getTime())) {
+    throw invalid(`${field} must be a valid ISO 8601 date.`);
+  }
+  return date;
+}
+
+function optionalInt(value, field, { min = 1, max, fallback }) {
+  if (value === undefined || value === '') {
+    return fallback;
+  }
+  if (typeof value !== 'string' || !/^\d+$/.test(value)) {
+    throw invalid(`${field} must be a whole number.`);
+  }
+  const number = Number(value);
+  if (number < min || number > max) {
+    throw invalid(`${field} must be between ${min} and ${max}.`);
+  }
+  return number;
+}
+
+module.exports = {
+  requireString, requireEmail, requirePassword, optionalString, optionalDate, optionalInt, invalid,
+};
