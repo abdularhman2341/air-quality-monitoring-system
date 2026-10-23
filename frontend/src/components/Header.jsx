@@ -16,6 +16,7 @@ function Header() {
                 <Link to="/">Dashboard</Link>
                 <Link to="/add-sensor">Add Sensor</Link>
                 <Link to="/history">History & Alerts</Link>
+                <Link to="/login">Login</Link>
             </nav>
             <div>
                 <span>System Online</span> 

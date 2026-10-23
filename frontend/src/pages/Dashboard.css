@@ -3,15 +3,16 @@
 .sensor-card,
 .alerts-card,
 .readings-card {
-  background: #1f2128;
-  border: 1px solid #2a2d36;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 20px;
   margin: 16px auto;
   max-width: 420px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 .status-card h2 {
-  color: #ffffff;
+  color: #1f2937;
   font-size: 28px;
   text-align: center;
   margin: 0;
@@ -24,7 +25,7 @@
 .gas-card p {
   font-size: 32px;
   font-weight: 700;
-  color: #ffffff;
+  color: #0f6b4a;
   text-align: center;
   margin: 8px 0 0;
 }
@@ -34,12 +35,12 @@
   margin: 4px 0;
 }
 .alerts-card {
-  background: #14291f;
-  border-color: #1f4d36;
+  background: #ecfdf5;
+  border-color: #a7f3d0;
 }
 
 .alerts-card h3 {
-  color: #6ee7b7;
+  color: #065f46;
 }
 .readings-card h3 {
   color: #e5e7eb;
@@ -52,4 +53,9 @@
 }
 .readings-card {
   min-height: 300px;
+}
+.status-row {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
 }
