@@ -94,7 +94,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
 
-    /auth/me:
+  /auth/me:
     get:
       tags: [Auth]
       summary: Get the signed-in user
