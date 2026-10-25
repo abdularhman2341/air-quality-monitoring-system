@@ -30,6 +30,14 @@ class Device extends BaseModel {
     return deviceId.match(/.{2}/g).join(':');
   }
 
+  static async isRegistered(deviceId) {
+    const row = await prisma.device.findUnique({
+      where: { device_id: deviceId },
+      select: { device_id: true },
+    });
+    return row !== null;
+  }
+
   static async withLatest(row) {
     const latest = await prisma.reading.findFirst({
       where: { device_id: row.device_id },
