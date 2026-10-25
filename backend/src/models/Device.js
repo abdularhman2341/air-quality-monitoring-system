@@ -1,23 +1,21 @@
 const bcrypt = require('bcryptjs');
 const BaseModel = require('./BaseModel');
 const HttpError = require('../errors/HttpError');
-const pool = require('../config/db');
+const prisma = require('../db/prisma');
 const Reading = require('./Reading');
 
 const MAC_PATTERN = /^[0-9A-F]{12}$/;
 
-const SELECT_WITH_LATEST = `
-  SELECT d.device_id, d.owner_id, d.name, d.location, d.connection_state,
-         d.online_since, d.last_reading_at, d.created_at,
-         r.lpg_ppm_est, r.alarm_active, r.reading_time
-  FROM devices d
-  LEFT JOIN LATERAL (
-    SELECT lpg_ppm_est, alarm_active, reading_time
-    FROM readings
-    WHERE readings.device_id = d.device_id
-    ORDER BY reading_time DESC
-    LIMIT 1
-  ) r ON true`;
+const COLUMNS = {
+  device_id: true,
+  owner_id: true,
+  name: true,
+  location: true,
+  connection_state: true,
+  online_since: true,
+  last_reading_at: true,
+  created_at: true,
+};
 
 class Device extends BaseModel {
   static normalizeMac(mac) {
@@ -32,48 +30,51 @@ class Device extends BaseModel {
     return deviceId.match(/.{2}/g).join(':');
   }
 
+  static async withLatest(row) {
+    const latest = await prisma.reading.findFirst({
+      where: { device_id: row.device_id },
+      select: { lpg_ppm_est: true, alarm_active: true, reading_time: true },
+      orderBy: { reading_time: 'desc' },
+    });
+    return new Device({ ...row, ...latest });
+  }
+
   static async findByOwner(userId) {
-    const { rows } = await pool.query(
-      `${SELECT_WITH_LATEST} WHERE d.owner_id = $1 ORDER BY d.created_at, d.device_id`,
-      [userId],
-    );
-    return rows.map((row) => new Device(row));
+    const rows = await prisma.device.findMany({
+      where: { owner_id: Number(userId) },
+      select: COLUMNS,
+      orderBy: [{ created_at: 'asc' }, { device_id: 'asc' }],
+    });
+    return Promise.all(rows.map((row) => Device.withLatest(row)));
   }
 
   static async findOwned(userId, deviceId) {
-    const { rows } = await pool.query(
-      `${SELECT_WITH_LATEST} WHERE d.device_id = $1 AND d.owner_id = $2`,
-      [deviceId, userId],
-    );
-    return rows[0] ? new Device(rows[0]) : null;
+    const row = await prisma.device.findFirst({
+      where: { device_id: deviceId, owner_id: Number(userId) },
+      select: COLUMNS,
+    });
+    return row ? Device.withLatest(row) : null;
   }
 
   static async link(userId, deviceId, pairingCode, name, location) {
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      const { rows } = await client.query(
-        'SELECT device_id, owner_id, pairing_code_hash FROM devices WHERE device_id = $1 FOR UPDATE',
-        [deviceId],
-      );
-      const device = rows[0];
-      const codeMatches = device ? await bcrypt.compare(pairingCode, device.pairing_code_hash) : false;
-      if (!codeMatches) {
-        throw new HttpError(404, 'DEVICE_NOT_FOUND', 'No device matches this MAC address and pairing code.');
-      }
-      if (device.owner_id !== null && String(device.owner_id) !== String(userId)) {
-        throw new HttpError(409, 'DEVICE_ALREADY_LINKED', 'This device is already linked to another account.');
-      }
-      await client.query(
-        'UPDATE devices SET owner_id = $1, name = $2, location = $3 WHERE device_id = $4',
-        [userId, name, location, deviceId],
-      );
-      await client.query('COMMIT');
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
+    const ownerId = Number(userId);
+    const device = await prisma.device.findUnique({
+      where: { device_id: deviceId },
+      select: { owner_id: true, pairing_code_hash: true },
+    });
+    const codeMatches = device ? await bcrypt.compare(pairingCode, device.pairing_code_hash) : false;
+    if (!codeMatches) {
+      throw new HttpError(404, 'DEVICE_NOT_FOUND', 'No device matches this MAC address and pairing code.');
+    }
+    const { count } = await prisma.device.updateMany({
+      where: {
+        device_id: deviceId,
+        OR: [{ owner_id: null }, { owner_id: ownerId }],
+      },
+      data: { owner_id: ownerId, name, location },
+    });
+    if (count === 0) {
+      throw new HttpError(409, 'DEVICE_ALREADY_LINKED', 'This device is already linked to another account.');
     }
     return Device.findOwned(userId, deviceId);
   }
