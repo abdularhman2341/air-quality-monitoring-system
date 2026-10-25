@@ -1,8 +1,8 @@
-const pool = require('../config/db');
+const prisma = require('../db/prisma');
 
 async function getHealth(req, res) {
   try {
-    await pool.query('SELECT 1');
+    await prisma.$queryRaw`SELECT 1`;
     res.json({ status: 'ok', database: 'connected' });
   } catch (err) {
     res.status(503).json({ status: 'error', database: 'disconnected' });
