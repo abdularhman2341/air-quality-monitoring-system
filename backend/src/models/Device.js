@@ -91,8 +91,28 @@ class Device extends BaseModel {
     throw HttpError.notImplemented('Device.unlink()', 'S2-06');
   }
 
-  async setConnectionState(state) {
-    throw HttpError.notImplemented('Device.setConnectionState()', 'S1-10');
+  static async setConnectionState(deviceId, state) {
+    if (state === 'online') {
+      await prisma.device.updateMany({
+        where: { device_id: deviceId, connection_state: 'offline' },
+        data: { connection_state: 'online', online_since: new Date() },
+      });
+      return;
+    }
+    await prisma.device.updateMany({
+      where: { device_id: deviceId },
+      data: { connection_state: 'offline', online_since: null },
+    });
+  }
+
+  static async updateLastReading(deviceId, readingTime) {
+    await prisma.device.updateMany({
+      where: {
+        device_id: deviceId,
+        OR: [{ last_reading_at: null }, { last_reading_at: { lt: readingTime } }],
+      },
+      data: { last_reading_at: readingTime },
+    });
   }
 
   belongsTo(userId) {

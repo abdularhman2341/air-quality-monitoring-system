@@ -27,11 +27,12 @@ class DeviceService {
   }
 
   async updateDeviceStatus(deviceId, state) {
-    throw HttpError.notImplemented('DeviceService.updateDeviceStatus()', 'S1-10');
+    await Device.setConnectionState(deviceId, state);
+    console.log(`MQTT ${deviceId} is ${state}`);
   }
 
   async updateLastReading(deviceId, readingTime) {
-    throw HttpError.notImplemented('DeviceService.updateLastReading()', 'S1-10');
+    await Device.updateLastReading(deviceId, readingTime);
   }
 
   async validateOwnership(userId, deviceId) {

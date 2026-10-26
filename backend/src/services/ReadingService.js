@@ -1,9 +1,13 @@
 const HttpError = require('../errors/HttpError');
+const Reading = require('../models/Reading');
 const deviceService = require('./DeviceService');
 
 class ReadingService {
-  async processTelemetry(deviceId, reading) {
-    throw HttpError.notImplemented('ReadingService.processTelemetry()', 'S1-10');
+  async processTelemetry(deviceId, payload) {
+    const reading = await Reading.record(deviceId, payload);
+    if (!reading) return null;
+    await deviceService.updateLastReading(deviceId, reading.reading_time);
+    return reading;
   }
 
    async getHistoricalReadings(userId, mac, from, to, page, limit) {
