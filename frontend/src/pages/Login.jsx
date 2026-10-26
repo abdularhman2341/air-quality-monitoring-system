@@ -19,35 +19,45 @@ function Login() {
       await login(email, password)
     } catch (err) {
       setError(err)
-    } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h1>{t('login.title')}</h1>
-      <input
-        type="email"
-        placeholder={t('login.email')}
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        dir="ltr"
-        required
-      />
-      <input
-        type="password"
-        placeholder={t('login.password')}
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-      />
-      <button type="submit" disabled={submitting}>
-        {submitting ? t('login.submitting') : t('login.submit')}
-      </button>
-      {error && <p role="alert">{errorText(error)}</p>}
-      <p>{t('login.noAccount')} <Link to="/signup">{t('login.createOne')}</Link></p>
-    </form>
+    <>
+      <h2>{t('login.title')}</h2>
+      <p className="subtitle">{t('login.subtitle')}</p>
+      <form className="form" onSubmit={handleSubmit}>
+        <label className="field">
+          {t('login.email')}
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            dir="ltr"
+            required
+          />
+        </label>
+        <label className="field">
+          {t('login.password')}
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            required
+          />
+        </label>
+        {error && <p className="form-error" role="alert">{errorText(error)}</p>}
+        <button type="submit" className="btn btn-primary" disabled={submitting}>
+          {submitting ? t('login.submitting') : t('login.submit')}
+        </button>
+      </form>
+      <p className="auth-switch">
+        {t('login.noAccount')} <Link to="/signup">{t('login.createOne')}</Link>
+      </p>
+    </>
   )
 }
 

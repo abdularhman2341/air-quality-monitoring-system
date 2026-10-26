@@ -20,45 +20,59 @@ function Signup() {
       await register(name, email, password)
     } catch (err) {
       setError(err)
-    } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h1>{t('signup.title')}</h1>
-      <input
-        type="text"
-        placeholder={t('signup.name')}
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        maxLength={100}
-        required
-      />
-      <input
-        type="email"
-        placeholder={t('login.email')}
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        dir="ltr"
-        required
-      />
-      <input
-        type="password"
-        placeholder={t('signup.password')}
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        minLength={8}
-        maxLength={72}
-        required
-      />
-      <button type="submit" disabled={submitting}>
-        {submitting ? t('signup.submitting') : t('signup.submit')}
-      </button>
-      {error && <p role="alert">{errorText(error)}</p>}
-      <p>{t('signup.haveAccount')} <Link to="/login">{t('signup.signIn')}</Link></p>
-    </form>
+    <>
+      <h2>{t('signup.title')}</h2>
+      <p className="subtitle">{t('signup.subtitle')}</p>
+      <form className="form" onSubmit={handleSubmit}>
+        <label className="field">
+          {t('signup.name')}
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoComplete="name"
+            maxLength={100}
+            required
+          />
+        </label>
+        <label className="field">
+          {t('login.email')}
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            dir="ltr"
+            required
+          />
+        </label>
+        <label className="field">
+          {t('login.password')}
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            minLength={8}
+            maxLength={72}
+            required
+          />
+          <span className="field-hint">{t('signup.passwordHint')}</span>
+        </label>
+        {error && <p className="form-error" role="alert">{errorText(error)}</p>}
+        <button type="submit" className="btn btn-primary" disabled={submitting}>
+          {submitting ? t('signup.submitting') : t('signup.submit')}
+        </button>
+      </form>
+      <p className="auth-switch">
+        {t('signup.haveAccount')} <Link to="/login">{t('signup.signIn')}</Link>
+      </p>
+    </>
   )
 }
 

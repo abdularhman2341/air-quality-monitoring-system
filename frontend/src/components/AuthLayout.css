@@ -1,0 +1,136 @@
+.auth {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  min-height: 100vh;
+}
+
+.auth-hero {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 48px;
+  padding: 56px clamp(28px, 5vw, 72px);
+  background: var(--brand-dark);
+  color: #fff;
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.auth-logo {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.auth-brand-name {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.auth-brand-tagline {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--brand-light);
+}
+
+.auth-pitch {
+  max-width: 520px;
+}
+
+.auth-pitch h1 {
+  margin-bottom: 20px;
+  font-size: clamp(36px, 4.4vw, 56px);
+  font-weight: 600;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.auth-pitch p {
+  font-size: 17px;
+  line-height: 1.7;
+  color: #cfe6dc;
+}
+
+.auth-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  color: #cfe6dc;
+}
+
+.auth-facts li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-fact-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brand-light);
+}
+
+.auth-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 28px clamp(24px, 5vw, 64px);
+}
+
+.auth-panel-top {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.auth-panel-body {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 32px 0;
+}
+
+.auth-form {
+  width: 100%;
+  max-width: 400px;
+}
+
+.auth-form h2 {
+  margin-bottom: 6px;
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.auth-form .subtitle {
+  margin-bottom: 28px;
+  color: var(--text-muted);
+}
+
+.auth-form .btn-primary {
+  height: 50px;
+  margin-top: 8px;
+  font-size: 16px;
+}
+
+.auth-switch {
+  margin-top: 24px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.auth-switch a {
+  font-weight: 500;
+}
