@@ -43,14 +43,10 @@ export function LanguageProvider({ children }) {
     return errorMessages[lang][err.code] || errorMessages[lang].UNKNOWN_ERROR
   }
 
-  function toggleLanguage() {
-    setLang(lang === 'ar' ? 'en' : 'ar')
-  }
-
   const locale = LOCALES[lang]
 
   return (
-    <LanguageContext.Provider value={{ lang, locale, t, errorText, toggleLanguage }}>
+    <LanguageContext.Provider value={{ lang, locale, t, errorText, setLanguage: setLang }}>
       {children}
     </LanguageContext.Provider>
   )

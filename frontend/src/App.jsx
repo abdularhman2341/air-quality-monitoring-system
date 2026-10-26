@@ -12,7 +12,7 @@ function App() {
   return (
     <>
       <Header />
-      <main>
+      <main className="app-main">
         <Routes>
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/add-sensor" element={<ProtectedRoute><AddSensor /></ProtectedRoute>} />
