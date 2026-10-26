@@ -1,19 +1,21 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
+import { useLanguage } from '../i18n/LanguageContext'
 
 function AddSensor() {
   const [macAddress, setMacAddress] = useState('')
   const [pairingCode, setPairingCode] = useState('')
   const [name, setName] = useState('')
   const [location, setLocation] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const navigate = useNavigate()
+  const { t, errorText } = useLanguage()
 
   async function handleSubmit(e) {
     e.preventDefault()
-    setError('')
+    setError(null)
     setSubmitting(true)
     try {
       await api.linkDevice({
@@ -24,34 +26,36 @@ function AddSensor() {
       })
       navigate('/')
     } catch (err) {
-      setError(err.message)
+      setError(err)
       setSubmitting(false)
     }
   }
 
   return (
     <form onSubmit={handleSubmit}>
-      <h1>Add Sensor</h1>
-      <p>Enter the MAC address and pairing code printed on your sensor.</p>
+      <h1>{t('addSensor.title')}</h1>
+      <p>{t('addSensor.hint')}</p>
       <input
         type="text"
-        placeholder="MAC ADDRESS (A4:CF:12:3B:9E:01)"
+        placeholder={t('addSensor.mac')}
         value={macAddress}
         onChange={(e) => setMacAddress(e.target.value)}
         maxLength={17}
+        dir="ltr"
         required
       />
       <input
         type="text"
-        placeholder="PAIRING CODE"
+        placeholder={t('addSensor.code')}
         value={pairingCode}
         onChange={(e) => setPairingCode(e.target.value)}
         maxLength={32}
+        dir="ltr"
         required
       />
       <input
         type="text"
-        placeholder="NAME (Kitchen)"
+        placeholder={t('addSensor.name')}
         value={name}
         onChange={(e) => setName(e.target.value)}
         maxLength={100}
@@ -59,15 +63,15 @@ function AddSensor() {
       />
       <input
         type="text"
-        placeholder="LOCATION (optional)"
+        placeholder={t('addSensor.location')}
         value={location}
         onChange={(e) => setLocation(e.target.value)}
         maxLength={150}
       />
       <button type="submit" disabled={submitting}>
-        {submitting ? 'Adding…' : 'Add Sensor'}
+        {submitting ? t('addSensor.submitting') : t('addSensor.submit')}
       </button>
-      {error && <p role="alert">{error}</p>}
+      {error && <p role="alert">{errorText(error)}</p>}
     </form>
   )
 }

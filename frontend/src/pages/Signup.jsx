@@ -1,23 +1,25 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { useLanguage } from '../i18n/LanguageContext'
 
 function Signup() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const { register } = useAuth()
+  const { t, errorText } = useLanguage()
 
   async function handleSubmit(e) {
     e.preventDefault()
-    setError('')
+    setError(null)
     setSubmitting(true)
     try {
       await register(name, email, password)
     } catch (err) {
-      setError(err.message)
+      setError(err)
     } finally {
       setSubmitting(false)
     }
@@ -25,10 +27,10 @@ function Signup() {
 
   return (
     <form onSubmit={handleSubmit}>
-      <h1>Create account</h1>
+      <h1>{t('signup.title')}</h1>
       <input
         type="text"
-        placeholder="NAME"
+        placeholder={t('signup.name')}
         value={name}
         onChange={(e) => setName(e.target.value)}
         maxLength={100}
@@ -36,14 +38,15 @@ function Signup() {
       />
       <input
         type="email"
-        placeholder="EMAIL"
+        placeholder={t('login.email')}
         value={email}
         onChange={(e) => setEmail(e.target.value)}
+        dir="ltr"
         required
       />
       <input
         type="password"
-        placeholder="PASSWORD (8+ characters)"
+        placeholder={t('signup.password')}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         minLength={8}
@@ -51,10 +54,10 @@ function Signup() {
         required
       />
       <button type="submit" disabled={submitting}>
-        {submitting ? 'Creating account…' : 'Sign up'}
+        {submitting ? t('signup.submitting') : t('signup.submit')}
       </button>
-      {error && <p role="alert">{error}</p>}
-      <p>Already have an account? <Link to="/login">Sign in</Link></p>
+      {error && <p role="alert">{errorText(error)}</p>}
+      <p>{t('signup.haveAccount')} <Link to="/login">{t('signup.signIn')}</Link></p>
     </form>
   )
 }

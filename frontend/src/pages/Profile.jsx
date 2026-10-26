@@ -1,34 +1,40 @@
 import { useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
+import { useLanguage } from '../i18n/LanguageContext'
 
 function Profile() {
   const { user, updateProfile, logout } = useAuth()
+  const { t, errorText, locale } = useLanguage()
   const [name, setName] = useState(user.name)
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
-    setMessage('')
-    setError('')
+    setSaved(false)
+    setError(null)
     setSaving(true)
     try {
       await updateProfile({ name })
-      setMessage('Saved.')
+      setSaved(true)
     } catch (err) {
-      setError(err.message)
+      setError(err)
     } finally {
       setSaving(false)
     }
   }
 
+  const memberSince = user.created_at
+    ? new Date(user.created_at).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })
+    : null
+
   return (
     <section>
-      <h1>Profile</h1>
+      <h1>{t('profile.title')}</h1>
       <form onSubmit={handleSubmit}>
         <label>
-          Name
+          {t('profile.name')}
           <input
             type="text"
             value={name}
@@ -38,18 +44,16 @@ function Profile() {
           />
         </label>
         <button type="submit" disabled={saving || name.trim() === user.name}>
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? t('profile.saving') : t('profile.save')}
         </button>
-        {message && <p>{message}</p>}
-        {error && <p role="alert">{error}</p>}
+        {saved && <p>{t('profile.saved')}</p>}
+        {error && <p role="alert">{errorText(error)}</p>}
       </form>
 
-      <p>Email: {user.email}</p>
-            {user.created_at && (
-        <p>Member since {new Date(user.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-      )}
+      <p>{t('profile.email', { email: user.email })}</p>
+      {memberSince && <p>{t('profile.memberSince', { date: memberSince })}</p>}
 
-      <button onClick={logout}>Log Out</button>
+      <button onClick={logout}>{t('header.logout')}</button>
     </section>
   )
 }

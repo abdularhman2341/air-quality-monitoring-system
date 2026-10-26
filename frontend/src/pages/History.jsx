@@ -1,4 +1,8 @@
+import { useLanguage } from '../i18n/LanguageContext'
+
 function History() {
-    return <h1>History & Alerts</h1>
+  const { t } = useLanguage()
+  return <h1>{t('history.title')}</h1>
 }
+
 export default History

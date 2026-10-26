@@ -3,7 +3,7 @@ import { api } from '../api/client'
 
 export function useReadings(deviceId, refreshMs, limit = 60) {
   const [readings, setReadings] = useState([])
-  const [error, setError] = useState('')
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     if (!deviceId) {
@@ -14,9 +14,9 @@ export function useReadings(deviceId, refreshMs, limit = 60) {
       api.readings(deviceId, { limit })
         .then((result) => {
           setReadings(result.data.slice().reverse())
-          setError('')
+          setError(null)
         })
-        .catch((err) => setError(err.message))
+        .catch((err) => setError(err))
     }
 
     load()
