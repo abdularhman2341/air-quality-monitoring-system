@@ -90,7 +90,7 @@ class Device extends BaseModel {
     return this.owner_id !== null && String(this.owner_id) === String(userId);
   }
 
-    async getReadings(from, to, page, limit) {
+  async getReadings(from, to, page, limit) {
     return Reading.findByDevice(this.device_id, from, to, page, limit);
   }
 
