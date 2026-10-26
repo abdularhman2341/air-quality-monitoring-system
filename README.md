@@ -125,7 +125,7 @@ backend/
 └── src/
     ├── server.js          Starts the HTTP server
     ├── app.js             Express app: middleware, /api/v1 routes, error handling
-    ├── config/db.js       Shared PostgreSQL connection pool
+    ├── db/prisma.js       Shared Prisma Client (every database query)
     ├── scripts/seedDevices.js Demo devices with readings
     ├── routes/            URL → controller mapping, one file per resource
     ├── controllers/       Read the request, call a service, send the response
