@@ -108,6 +108,7 @@ Open <http://localhost:3000/api/v1/health>. Expected response:
 | `npm start` | Run the backend without auto-restart (used in production) |
 | `npm run migrate` | Apply the Prisma migrations to create or update the tables (safe to run more than once) |
 | `npm run seed:devices` | Add two demo devices with readings (pairing codes 482913 and 735104) |
+| `npm run simulate` | Run a fake ESP32 that publishes readings over MQTT (type `l` + Enter for a gas leak, `q` + Enter to stop) |
 | `npm run db:migrate` | Create a new migration after changing `prisma/schema.prisma` (development only) |
 | `docker compose up -d` | Start the database and MQTT broker |
 | `docker compose down` | Stop them (data is kept) |

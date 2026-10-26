@@ -12,7 +12,8 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "simulate": "node src/scripts/simulateDevice.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
@@ -31,6 +32,7 @@
     "dotenv": "^18.0.7",
     "express": "^5.3.0",
     "jsonwebtoken": "^9.0.3",
+    "mqtt": "^5.16.1",
     "prisma": "^6.19.3",
     "swagger-ui-express": "^5.0.1",
     "yaml": "^2.9.1"
