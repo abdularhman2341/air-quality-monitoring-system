@@ -1,5 +1,6 @@
 const BaseModel = require('./BaseModel');
 const prisma = require('../db/prisma');
+const { deviceTime } = require('../utils/deviceTime');
 
 const COLUMNS = {
   id: true,
@@ -13,16 +14,8 @@ const COLUMNS = {
   rs_ro_ratio: true,
 };
 
-const MAX_CLOCK_SKEW_MS = 10 * 60 * 1000;
-
 const integerOrNull = (value) => (Number.isInteger(value) ? value : null);
 const numberOrNull = (value) => (typeof value === 'number' && Number.isFinite(value) ? value : null);
-
-function readingTime(ts) {
-  const deviceTime = new Date(ts);
-  const now = new Date();
-  return Math.abs(now - deviceTime) > MAX_CLOCK_SKEW_MS ? now : deviceTime;
-}
 
 class Reading extends BaseModel {
   static async findByDevice(deviceId, from, to, page, limit) {
@@ -64,7 +57,7 @@ class Reading extends BaseModel {
       rs_ro_ratio: numberOrNull(payload.rs_ro_ratio),
       lpg_ppm_est: payload.lpg_ppm_est,
       alarm_active: payload.alarm_active,
-      reading_time: readingTime(payload.ts),
+      reading_time: deviceTime(payload.ts),
     };
     const { count } = await prisma.reading.createMany({ data: [data], skipDuplicates: true });
     return count === 1 ? new Reading(data) : null;

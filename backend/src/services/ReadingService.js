@@ -1,12 +1,16 @@
 const HttpError = require('../errors/HttpError');
 const Reading = require('../models/Reading');
 const deviceService = require('./DeviceService');
+const alertService = require('./AlertService');
 
 class ReadingService {
   async processTelemetry(deviceId, payload) {
     const reading = await Reading.record(deviceId, payload);
     if (!reading) return null;
     await deviceService.updateLastReading(deviceId, reading.reading_time);
+    if (reading.alarm_active) {
+      await alertService.updatePeak(deviceId, reading.lpg_ppm_est);
+    }
     return reading;
   }
 
