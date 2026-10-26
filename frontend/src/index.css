@@ -295,3 +295,9 @@ select {
   background: var(--danger-bg);
   color: var(--danger-ink);
 }
+
+.page-loading {
+  padding: 48px 16px;
+  text-align: center;
+  color: var(--text-muted);
+}

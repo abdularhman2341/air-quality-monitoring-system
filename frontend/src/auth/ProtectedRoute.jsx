@@ -8,7 +8,7 @@ export function ProtectedRoute({ children }) {
   const location = useLocation()
 
   if (loading) {
-    return <p>{t('common.loading')}</p>
+    return <p className="page-loading">{t('common.loading')}</p>
   }
   if (!user) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
@@ -22,7 +22,7 @@ export function GuestRoute({ children, redirectTo = '/' }) {
   const location = useLocation()
 
   if (loading) {
-    return <p>{t('common.loading')}</p>
+    return <p className="page-loading">{t('common.loading')}</p>
   }
   if (user) {
     return <Navigate to={location.state?.from || redirectTo} replace />
