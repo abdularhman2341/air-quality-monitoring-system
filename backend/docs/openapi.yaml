@@ -15,6 +15,7 @@ tags:
   - name: Auth
   - name: Devices
   - name: Readings
+  - name: Alerts
 
 paths:
   /health:
@@ -287,12 +288,86 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
 
+  /alerts:
+    get:
+      tags: [Alerts]
+      summary: Alert history for all my devices
+      description: Newest first. One alert is one leak, from `alarm_on` until `alarm_off`. `ended_at` is null while the alarm is still on.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: device_id
+          in: query
+          description: Only this device (with or without colons)
+          schema: { type: string, example: A4CF123B9E01 }
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: One page of alerts
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AlertPage' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /devices/{mac}/alerts:
+    get:
+      tags: [Alerts]
+      summary: Alert history for one of my devices
+      description: Newest first. `ended_at` is null while the alarm is still on.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: mac
+          in: path
+          required: true
+          description: With or without colons
+          schema: { type: string, example: A4CF123B9E01 }
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: One page of alerts
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AlertPage' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: DEVICE_NOT_FOUND (does not exist or belongs to someone else)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
+  parameters:
+    From:
+      name: from
+      in: query
+      description: ISO 8601 start time (by `started_at`)
+      schema: { type: string, format: date-time, example: '2026-10-22T00:00:00Z' }
+    To:
+      name: to
+      in: query
+      description: ISO 8601 end time, must not be before `from`
+      schema: { type: string, format: date-time, example: '2026-10-27T00:00:00Z' }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 1000, default: 100 }
 
   schemas:
     User:
@@ -333,6 +408,26 @@ components:
         sensor_raw_adc: { type: integer, nullable: true }
         sensor_voltage: { type: number, nullable: true }
         rs_ro_ratio: { type: number, nullable: true }
+
+    Alert:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        device_id: { type: string, example: A4CF123B9E01 }
+        started_at: { type: string, format: date-time, description: Time of alarm_on }
+        ended_at: { type: string, format: date-time, nullable: true, description: 'Time of alarm_off, null while the alarm is on' }
+        peak_lpg_ppm_est: { type: number, example: 1500, description: Highest estimate during the alert }
+        threshold_ppm: { type: number, example: 1000 }
+
+    AlertPage:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Alert' }
+        page: { type: integer, example: 1 }
+        limit: { type: integer, example: 100 }
+        total: { type: integer, example: 2 }
 
     Error:
       type: object
