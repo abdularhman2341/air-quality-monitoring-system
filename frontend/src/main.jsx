@@ -10,14 +10,17 @@ import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './auth/AuthContext'
 import { LanguageProvider } from './i18n/LanguageContext'
+import { ToastProvider } from './toast/ToastContext'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
       <LanguageProvider>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </ToastProvider>
       </LanguageProvider>
     </BrowserRouter>
   </StrictMode>,

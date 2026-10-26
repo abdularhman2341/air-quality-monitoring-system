@@ -70,6 +70,16 @@ async function request (path, { method = 'GET', body } = {}) {
   return data
 }
 
+function query (params = {}) {
+  const search = new URLSearchParams()
+  for (const [name, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== '') {
+      search.set(name, value)
+    }
+  }
+  return search.toString()
+}
+
 export const api = {
   register: (name, email, password) => request('/auth/register', { method: 'POST', body: { name, email, password } }),
   login: (email, password) => request('/auth/login', { method: 'POST', body: { email, password } }),
@@ -78,6 +88,7 @@ export const api = {
   updateMe: (data) => request('/auth/me', { method: 'PATCH', body: data }),
   listDevices: () => request('/devices'),
   linkDevice: (device) => request('/devices', { method: 'POST', body: device }),
-  readings: (mac, params) => request(`/devices/${mac}/readings?${new URLSearchParams(params)}`),
-  latestReading: (mac) => request(`/devices/${mac}/readings/latest`)
+  readings: (mac, params) => request(`/devices/${mac}/readings?${query(params)}`),
+  latestReading: (mac) => request(`/devices/${mac}/readings/latest`),
+  alerts: (params) => request(`/alerts?${query(params)}`)
 }
