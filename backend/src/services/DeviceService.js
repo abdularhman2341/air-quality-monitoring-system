@@ -18,8 +18,10 @@ class DeviceService {
     return Device.link(userId, Device.normalizeMac(mac), pairingCode, name, location);
   }
 
-  async updateDevice(userId, mac, data) {
-    throw HttpError.notImplemented('DeviceService.updateDevice()', 'S2-06');
+  async updateDevice(userId, mac, changes) {
+    const device = await this.getDevice(userId, mac);
+    await device.update(changes);
+    return this.getDevice(userId, mac);
   }
 
   async unlinkDevice(userId, mac) {

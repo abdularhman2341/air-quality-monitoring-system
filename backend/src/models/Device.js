@@ -87,6 +87,16 @@ class Device extends BaseModel {
     return Device.findOwned(userId, deviceId);
   }
 
+  async update(changes) {
+    const { count } = await prisma.device.updateMany({
+      where: { device_id: this.device_id, owner_id: this.owner_id },
+      data: changes,
+    });
+    if (count === 0) {
+      throw new HttpError(404, 'DEVICE_NOT_FOUND', 'Device not found.');
+    }
+  }
+
   async unlink() {
     throw HttpError.notImplemented('Device.unlink()', 'S2-06');
   }
