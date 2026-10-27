@@ -4,16 +4,16 @@ import { api } from '../api/client'
 export function useDevices(refreshMs) {
   const [devices, setDevices] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     function load() {
       api.listDevices()
         .then((data) => {
           setDevices(data)
-          setError('')
+          setError(null)
         })
-        .catch((err) => setError(err.message))
+        .catch((err) => setError(err))
         .finally(() => setLoading(false))
     }
 
