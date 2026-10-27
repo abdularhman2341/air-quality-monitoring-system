@@ -25,7 +25,8 @@ class DeviceService {
   }
 
   async unlinkDevice(userId, mac) {
-    throw HttpError.notImplemented('DeviceService.unlinkDevice()', 'S2-06');
+    const device = await this.getDevice(userId, mac);
+    await device.unlink();
   }
 
   async updateDeviceStatus(deviceId, state) {

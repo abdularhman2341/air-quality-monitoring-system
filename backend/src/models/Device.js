@@ -98,7 +98,17 @@ class Device extends BaseModel {
   }
 
   async unlink() {
-    throw HttpError.notImplemented('Device.unlink()', 'S2-06');
+    await prisma.$transaction(async (tx) => {
+      const { count } = await tx.device.updateMany({
+        where: { device_id: this.device_id, owner_id: this.owner_id },
+        data: { owner_id: null, name: null, location: null, last_reading_at: null },
+      });
+      if (count === 0) {
+        throw new HttpError(404, 'DEVICE_NOT_FOUND', 'Device not found.');
+      }
+      await tx.alert.deleteMany({ where: { device_id: this.device_id } });
+      await tx.reading.deleteMany({ where: { device_id: this.device_id } });
+    });
   }
 
   static async setConnectionState(deviceId, state) {

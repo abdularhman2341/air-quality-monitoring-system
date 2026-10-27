@@ -1,4 +1,3 @@
-const HttpError = require('../errors/HttpError');
 const deviceService = require('../services/DeviceService');
 const { requireString, optionalString, invalid } = require('../utils/validate');
 
@@ -39,7 +38,8 @@ async function update(req, res) {
 }
 
 async function unlink(req, res) {
-  throw HttpError.notImplemented('DELETE /devices/:mac', 'S2-06');
+  await deviceService.unlinkDevice(req.userId, req.params.mac);
+  res.status(204).end();
 }
 
 module.exports = { list, link, get, update, unlink };
