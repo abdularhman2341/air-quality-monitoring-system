@@ -214,6 +214,63 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+    patch:
+      tags: [Devices]
+      summary: Rename a device or change its location
+      description: Send at least one field. Send `location` as null or an empty string to clear it.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: mac
+          in: path
+          required: true
+          description: With or without colons
+          schema: { type: string, example: A4CF123B9E01 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                name: { type: string, maxLength: 100, example: Main kitchen }
+                location: { type: string, maxLength: 150, nullable: true, example: Restaurant A }
+      responses:
+        '200':
+          description: The updated device
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Device' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: DEVICE_NOT_FOUND (does not exist or belongs to someone else)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [Devices]
+      summary: Unlink a device from my account
+      description: |
+        Removes the owner, name, and location, and deletes the device's readings and alerts.
+        The device can be linked again with its pairing code.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: mac
+          in: path
+          required: true
+          description: With or without colons
+          schema: { type: string, example: A4CF123B9E01 }
+      responses:
+        '204':
+          description: Device unlinked
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: DEVICE_NOT_FOUND (does not exist or belongs to someone else)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 
   /devices/{mac}/readings:
     get:

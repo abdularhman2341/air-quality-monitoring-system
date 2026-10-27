@@ -1,6 +1,5 @@
-const HttpError = require('../errors/HttpError');
 const deviceService = require('../services/DeviceService');
-const { requireString, optionalString } = require('../utils/validate');
+const { requireString, optionalString, invalid } = require('../utils/validate');
 
 async function list(req, res) {
   const devices = await deviceService.getUserDevices(req.userId);
@@ -23,11 +22,24 @@ async function get(req, res) {
 }
 
 async function update(req, res) {
-  throw HttpError.notImplemented('PATCH /devices/:mac', 'S2-06');
+  const body = req.body || {};
+  const changes = {};
+  if (body.name !== undefined) {
+    changes.name = requireString(body.name, 'name', { max: 100 });
+  }
+  if (body.location !== undefined) {
+    changes.location = optionalString(body.location, 'location', 150);
+  }
+  if (Object.keys(changes).length === 0) {
+    throw invalid('Send name or location to update.');
+  }
+  const device = await deviceService.updateDevice(req.userId, req.params.mac, changes);
+  res.json(device);
 }
 
 async function unlink(req, res) {
-  throw HttpError.notImplemented('DELETE /devices/:mac', 'S2-06');
+  await deviceService.unlinkDevice(req.userId, req.params.mac);
+  res.status(204).end();
 }
 
 module.exports = { list, link, get, update, unlink };

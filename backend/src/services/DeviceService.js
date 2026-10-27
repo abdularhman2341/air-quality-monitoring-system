@@ -18,12 +18,15 @@ class DeviceService {
     return Device.link(userId, Device.normalizeMac(mac), pairingCode, name, location);
   }
 
-  async updateDevice(userId, mac, data) {
-    throw HttpError.notImplemented('DeviceService.updateDevice()', 'S2-06');
+  async updateDevice(userId, mac, changes) {
+    const device = await this.getDevice(userId, mac);
+    await device.update(changes);
+    return this.getDevice(userId, mac);
   }
 
   async unlinkDevice(userId, mac) {
-    throw HttpError.notImplemented('DeviceService.unlinkDevice()', 'S2-06');
+    const device = await this.getDevice(userId, mac);
+    await device.unlink();
   }
 
   async updateDeviceStatus(deviceId, state) {
@@ -36,7 +39,8 @@ class DeviceService {
   }
 
   async validateOwnership(userId, deviceId) {
-    throw HttpError.notImplemented('DeviceService.validateOwnership()', 'S2-06');
+    const device = await Device.findOwned(userId, deviceId);
+    return device !== null;
   }
 }
 
