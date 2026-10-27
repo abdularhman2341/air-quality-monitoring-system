@@ -39,7 +39,8 @@ class DeviceService {
   }
 
   async validateOwnership(userId, deviceId) {
-    throw HttpError.notImplemented('DeviceService.validateOwnership()', 'S2-06');
+    const device = await Device.findOwned(userId, deviceId);
+    return device !== null;
   }
 }
 
