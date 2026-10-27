@@ -34,25 +34,40 @@ The sketch reads the TGS2610-D00 and prints the device MAC and each reading to t
 1. Install the [Arduino IDE](https://www.arduino.cc/en/software).
 2. Add the ESP32 board package: **Boards Manager** → search `esp32` by Espressif → **Install**.
 3. Open `gas_monitor/gas_monitor.ino`.
-4. Set the circuit values at the top of the file: `VC_VOLTS`, `RL_OHMS`, `DIVIDER_RATIO`.
+4. Check the circuit values at the top of the file. They must match the resistors on the breadboard:
+
+   | Constant | Current value | Meaning |
+   |---|---|---|
+   | `VC_VOLTS` | `5.0` | Circuit voltage on the 5V rail. Replace with the measured value if available. |
+   | `RL_OHMS` | `6667` | RL (10k) in parallel with the divider (10k + 10k = 20k) |
+   | `DIVIDER_RATIO` | `2.0` | (R1 + R2) / R2 = (10k + 10k) / 10k |
+
+   If you change any resistor, recalculate `RL_OHMS` and `DIVIDER_RATIO`.
 5. Select the board **ESP32 Dev Module** and the right port.
 6. Click **Upload**.
 7. Open **Tools → Serial Monitor** at **115200** baud.
 
 ## Expected output
 
+Real reading in clean air, about 5 minutes after power-up:
+
 ```
 === Gas Monitor - S1-05 sensor test ===
-Device MAC (device_id): A4CF123B9E01
+Device MAC (device_id): XXXXXXXXXXXX
+Note: let the sensor heater warm up before trusting the readings.
+ppm values are uncalibrated estimates.
 
-seq=1  raw_adc=1834  vout=2.956 V  rs=6914 ohm
-seq=2  raw_adc=1829  vout=2.948 V  rs=6961 ohm
+seq=63 raw_adc=695 pin=0.706 V vout=1.412 V rs=16941 ohm rs_ro=4.458 lpg_ppm_est=193
 ```
 
-Copy the MAC into the database seed (`database/seeds/001_dev_seed.sql`) and the broker credentials.
+- `pin` should stay well below 3.3 V (maximum 2.5 V with the current divider).
+- If `ADC near max` appears and the sensor stays cold, the heater and electrode pins are swapped.
+- Values below 500 ppm are outside the sensor's optimal range (500–10,000 ppm) and mean "below detection".
+
+Use the MAC as the test device in the backend seed: set `TEST_DEVICE_MAC` in `backend/.env`, then run `npm run db:seed`. The same MAC is used for the device's MQTT credentials.
 
 ## Next steps
 
 - **S1-07:** Wi-Fi, NTP time sync, and publishing readings over MQTT. Copy `gas_monitor/config.example.h` to `gas_monitor/config.h` and fill in the real values. `config.h` is in `.gitignore` and must never be committed.
-- **S1-08:** measure `RO_OHMS` in clean air and document the ppm conversion method.
+- **S1-08:** record the sensor resistance in clean air (`R_air`) after warm-up, and document the ppm conversion method. `RO_OHMS` (resistance at 1800 ppm) can only be measured with a known gas concentration, e.g. the static dilution test.
 - **S2-03:** local alarm on the buzzer and LED, working without internet.
