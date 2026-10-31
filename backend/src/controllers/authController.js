@@ -1,4 +1,5 @@
 const authService = require('../services/AuthService');
+const realtimeGateway = require('../services/RealtimeGateway');
 const { requireString, requireEmail, requirePassword } = require('../utils/validate');
 
 async function register(req, res) {
@@ -20,6 +21,7 @@ async function login(req, res) {
 
 async function logout(req, res) {
   await authService.logout(req.sessionId);
+  realtimeGateway.disconnectSession(req.sessionId);
   res.status(204).end();
 }
 

@@ -43,7 +43,7 @@ class AuthService {
     if (!session) {
       throw unauthorized('SESSION_ENDED', 'This session has ended. Please sign in again.');
     }
-    return { userId: payload.sub, sessionId: session.id };
+    return { userId: payload.sub, sessionId: session.id, expiresAt: payload.exp * 1000 };
   }
 
   async logout(sessionId) {
