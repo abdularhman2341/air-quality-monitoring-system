@@ -1,8 +1,8 @@
 -- ---------------------------------------------------------------------------
 -- Custom constraints
--- Rules that schema.prisma cannot express. Paste this block at the END of the
--- init migration (prisma/migrations/<timestamp>_init/migration.sql) before
--- applying it. See prisma/README.md, "Custom constraints".
+-- Rules that schema.prisma cannot express. Reference copy only: the SQL that
+-- runs is in the migrations (init, then add_missing_constraints for the alerts
+-- and sessions rules). See prisma/README.md, "Custom constraints".
 -- ---------------------------------------------------------------------------
 
 -- Emails are stored in lowercase, so the unique index on email is case-insensitive.
@@ -30,11 +30,6 @@ ALTER TABLE "alerts"
 -- A device can have at most one open (still active) alert at a time.
 CREATE UNIQUE INDEX "alerts_one_open_per_device"
   ON "alerts" ("device_id") WHERE "ended_at" IS NULL;
-
--- ---------------------------------------------------------------------------
--- Added in migration add_sessions (paste this part at the end of THAT
--- migration, not the init migration).
--- ---------------------------------------------------------------------------
 
 -- A session must expire after it is created.
 ALTER TABLE "sessions"

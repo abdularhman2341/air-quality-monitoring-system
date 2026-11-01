@@ -21,17 +21,28 @@ paths:
   /health:
     get:
       tags: [Health]
-      summary: Check the server and database
+      summary: Check the server, database, and MQTT connection
       responses:
         '200':
-          description: Server is running
+          description: Server and database are running. status is degraded when MQTT is disconnected, because the API still works but new readings stop arriving.
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  status: { type: string, example: ok }
+                  status: { type: string, enum: [ok, degraded], example: ok }
                   database: { type: string, example: connected }
+                  mqtt: { type: string, enum: [connected, disconnected, disabled], example: connected }
+        '503':
+          description: Database is unavailable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: error }
+                  database: { type: string, example: disconnected }
+                  mqtt: { type: string, example: connected }
 
   /auth/register:
     post:
