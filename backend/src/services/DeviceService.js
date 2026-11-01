@@ -1,5 +1,6 @@
 const HttpError = require('../errors/HttpError');
 const Device = require('../models/Device');
+const realtimeGateway = require('./RealtimeGateway');
 
 class DeviceService {
     async getUserDevices(userId) {
@@ -29,9 +30,10 @@ class DeviceService {
     await device.unlink();
   }
 
-  async updateDeviceStatus(deviceId, state) {
+  async updateDeviceStatus(deviceId, state, ownerId) {
     await Device.setConnectionState(deviceId, state);
     console.log(`MQTT ${deviceId} is ${state}`);
+    realtimeGateway.emitToOwner(ownerId, 'device:status', { device_id: deviceId, state, ts: new Date().toISOString() });
   }
 
   async updateLastReading(deviceId, readingTime) {

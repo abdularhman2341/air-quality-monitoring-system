@@ -31,9 +31,9 @@ const VALIDATORS = {
 };
 
 const HANDLERS = {
-  readings: (deviceId, message) => readingService.processTelemetry(deviceId, message),
-  alarms: (deviceId, message) => alertService.handleAlarmEvent(deviceId, message),
-  status: (deviceId, message) => deviceService.updateDeviceStatus(deviceId, message.state),
+  readings: (deviceId, message, ownerId) => readingService.processTelemetry(deviceId, message, ownerId),
+  alarms: (deviceId, message, ownerId) => alertService.handleAlarmEvent(deviceId, message, ownerId),
+  status: (deviceId, message, ownerId) => deviceService.updateDeviceStatus(deviceId, message.state, ownerId),
 };
 
 class MqttSubscriberService {
@@ -96,9 +96,10 @@ class MqttSubscriberService {
 
     const problem = VALIDATORS[kind](message);
     if (problem) return this.drop(topic, problem);
-    if (!(await Device.isRegistered(deviceId))) return this.drop(topic, 'device is not registered');
+    const ownerId = await Device.findOwnerId(deviceId);
+    if (ownerId === undefined) return this.drop(topic, 'device is not registered');
 
-    return HANDLERS[kind](deviceId, message);
+    return HANDLERS[kind](deviceId, message, ownerId);
   }
 
   drop(topic, reason) {

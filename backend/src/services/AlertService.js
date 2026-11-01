@@ -1,8 +1,9 @@
 const Alert = require('../models/Alert');
 const { deviceTime } = require('../utils/deviceTime');
+const realtimeGateway = require('./RealtimeGateway');
 
 class AlertService {
-  async handleAlarmEvent(deviceId, event) {
+  async handleAlarmEvent(deviceId, event, ownerId) {
     const time = deviceTime(event.ts);
     const openAlert = await Alert.findOpen(deviceId);
 
@@ -10,12 +11,14 @@ class AlertService {
       if (openAlert) return openAlert;
       const alert = await Alert.open(deviceId, event.lpg_ppm_est, event.threshold_ppm, time);
       console.log(`MQTT ${deviceId} alert ${alert.id} opened`);
+      realtimeGateway.emitToOwner(ownerId, 'alert:new', alert);
       return alert;
     }
 
     if (!openAlert) return null;
     await openAlert.close(time);
     console.log(`MQTT ${deviceId} alert ${openAlert.id} closed`);
+    realtimeGateway.emitToOwner(ownerId, 'alert:new', openAlert);
     return openAlert;
   }
 
