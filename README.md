@@ -97,7 +97,7 @@ npm run dev
 Open <http://localhost:3000/api/v1/health>. Expected response:
 
 ```json
-{"status":"ok","database":"connected"}
+{"status":"ok","database":"connected","mqtt":"connected"}
 ```
 
 ### Useful commands

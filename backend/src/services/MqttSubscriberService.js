@@ -62,6 +62,11 @@ class MqttSubscriberService {
     this.client.on('message', (topic, payload) => this.enqueue(topic, payload));
   }
 
+  get status() {
+    if (!this.client) return 'disabled';
+    return this.client.connected ? 'connected' : 'disconnected';
+  }
+
   enqueue(topic, payload) {
     const key = topic.split('/')[2] || topic;
     const previous = this.queues.get(key) || Promise.resolve();
