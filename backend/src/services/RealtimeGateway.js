@@ -1,12 +1,13 @@
 const { Server } = require('socket.io');
 const HttpError = require('../errors/HttpError');
 const authService = require('./AuthService');
+const { corsOrigins } = require('../config/cors');
 
 const MAX_TIMER_MS = 2147483647;
 
 class RealtimeGateway {
   init(server) {
-    this.io = new Server(server, { cors: { origin: '*' } });
+    this.io = new Server(server, corsOrigins.length > 0 ? { cors: { origin: corsOrigins } } : {});
     this.io.use((socket, next) => this.authenticateSocket(socket, next));
     this.io.on('connection', (socket) => this.handleConnection(socket));
   }
