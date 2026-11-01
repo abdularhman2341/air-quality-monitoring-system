@@ -39,11 +39,6 @@ class DeviceService {
   async updateLastReading(deviceId, readingTime) {
     await Device.updateLastReading(deviceId, readingTime);
   }
-
-  async validateOwnership(userId, deviceId) {
-    const device = await Device.findOwned(userId, deviceId);
-    return device !== null;
-  }
 }
 
 module.exports = new DeviceService();
