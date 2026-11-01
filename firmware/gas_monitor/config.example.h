@@ -1,5 +1,5 @@
 // config.example.h
-// Template for the device's private settings. Used from S1-07 (Wi-Fi + MQTT).
+// Template for the device's private settings. Used from S1-07 (Wi-Fi setup + MQTT).
 //
 // How to use:
 //   1. Copy this file to config.h in the same folder.
@@ -10,10 +10,13 @@
 #pragma once
 
 // ---------------------------------------------------------------------------
-// Wi-Fi
+// Wi-Fi setup page
+// The home Wi-Fi is NOT set here: the user enters it from a phone on the
+// device's setup page (Wi-Fi network "AQMS-Setup-XXXX").
+// This is the password of that setup network, so neighbours cannot change
+// the device's Wi-Fi. At least 8 characters.
 // ---------------------------------------------------------------------------
-#define WIFI_SSID       "your-wifi-name"
-#define WIFI_PASSWORD   "your-wifi-password"
+#define PORTAL_PASSWORD "change-me-123"
 
 // ---------------------------------------------------------------------------
 // MQTT broker (Mosquitto on Railway, TCP proxy with TLS)
