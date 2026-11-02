@@ -17,6 +17,9 @@ const COLUMNS = {
   created_at: true,
 };
 
+// A device without an owner: it can be linked again with its pairing code.
+const RELEASED = { owner_id: null, name: null, location: null, last_reading_at: null };
+
 class Device extends BaseModel {
   static normalizeMac(mac) {
     const normalized = String(mac ?? '').replace(/[:-]/g, '').trim().toUpperCase();
@@ -101,7 +104,7 @@ class Device extends BaseModel {
     await prisma.$transaction(async (tx) => {
       const { count } = await tx.device.updateMany({
         where: { device_id: this.device_id, owner_id: this.owner_id },
-        data: { owner_id: null, name: null, location: null, last_reading_at: null },
+        data: RELEASED,
       });
       if (count === 0) {
         throw new HttpError(404, 'DEVICE_NOT_FOUND', 'Device not found.');
@@ -109,6 +112,25 @@ class Device extends BaseModel {
       await tx.alert.deleteMany({ where: { device_id: this.device_id } });
       await tx.reading.deleteMany({ where: { device_id: this.device_id } });
     });
+  }
+
+  // Unlinks every device of an account that is being deleted, inside the
+  // caller's transaction. Same rule as unlink(): the history is deleted, so
+  // the next owner of a device starts empty.
+  static async releaseAllOwnedBy(tx, userId) {
+    const ownerId = Number(userId);
+    const owned = await tx.device.findMany({ where: { owner_id: ownerId }, select: { device_id: true } });
+    const deviceIds = owned.map((device) => device.device_id);
+    if (deviceIds.length === 0) {
+      return 0;
+    }
+    await tx.alert.deleteMany({ where: { device_id: { in: deviceIds } } });
+    await tx.reading.deleteMany({ where: { device_id: { in: deviceIds } } });
+    const { count } = await tx.device.updateMany({
+      where: { device_id: { in: deviceIds }, owner_id: ownerId },
+      data: RELEASED,
+    });
+    return count;
   }
 
   static async setConnectionState(deviceId, state) {

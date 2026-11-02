@@ -121,7 +121,7 @@ paths:
     patch:
       tags: [Auth]
       summary: Update my profile
-      description: Only the name can be changed for now.
+      description: Changes the name. The email has its own endpoint (`PATCH /auth/me/email`) because it needs the current password.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -140,6 +140,69 @@ paths:
               schema: { $ref: '#/components/schemas/User' }
         '400': { $ref: '#/components/responses/ValidationError' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+    delete:
+      tags: [Auth]
+      summary: Delete my account
+      description: |
+        Needs the current password. In one transaction, every device of the account is
+        unlinked (its readings and alerts are deleted, and it can be linked again with its
+        pairing code), then the account and all its sessions are deleted, so every token
+        of this account stops working.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password]
+              properties:
+                current_password: { type: string, maxLength: 72, example: password123 }
+      responses:
+        '204':
+          description: Account deleted
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: WRONG_PASSWORD (403, not 401, because the session is still valid)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/me/email:
+    patch:
+      tags: [Auth]
+      summary: Change my email
+      description: Needs the current password. The email is saved in lowercase. Existing sessions stay valid.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, current_password]
+              properties:
+                email: { type: string, format: email, example: new@example.com }
+                current_password: { type: string, maxLength: 72, example: password123 }
+      responses:
+        '200':
+          description: The updated user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: WRONG_PASSWORD (403, not 401, because the session is still valid)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: EMAIL_TAKEN
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 
   /auth/logout:
     post:

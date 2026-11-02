@@ -53,6 +53,14 @@ class RealtimeGateway {
     }
     this.io.in(`session:${sessionId}`).disconnectSockets(true);
   }
+
+  // Every open tab of a deleted account, on any device.
+  disconnectUser(userId) {
+    if (!this.io) {
+      return;
+    }
+    this.io.in(`user:${userId}`).disconnectSockets(true);
+  }
 }
 
 module.exports = new RealtimeGateway();

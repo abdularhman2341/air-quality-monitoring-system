@@ -63,6 +63,31 @@ class AuthService {
     return user.updateProfile(data);
   }
 
+  // Changing the email or deleting the account asks for the current password,
+  // so someone with an open session on a shared device cannot take over or
+  // delete the account. 403, not 401: the session is still valid, and the
+  // frontend signs the user out on any 401.
+  async confirmPassword(userId, password) {
+    const user = await this.getUser(userId);
+    if (!(await user.checkPassword(password))) {
+      throw new HttpError(403, 'WRONG_PASSWORD', 'Current password is incorrect.');
+    }
+    return user;
+  }
+
+  async changeEmail(userId, email, currentPassword) {
+    const user = await this.confirmPassword(userId, currentPassword);
+    if (email === user.email) {
+      return user;
+    }
+    return user.changeEmail(email);
+  }
+
+  async deleteAccount(userId, currentPassword) {
+    const user = await this.confirmPassword(userId, currentPassword);
+    await user.delete();
+  }
+
   expiryMs() {
     const match = /^(\d+)([smhd])$/.exec(tokenExpiry);
     if (!match) {
