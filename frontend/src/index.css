@@ -131,6 +131,16 @@ select {
   color: var(--primary);
 }
 
+.btn-danger {
+  border: 0;
+  background: var(--danger-ink);
+  color: #fff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);

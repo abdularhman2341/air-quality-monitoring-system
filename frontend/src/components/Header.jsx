@@ -22,7 +22,7 @@ function Header() {
 
       <nav className="nav">
         <NavLink to="/" end className="nav-link">{t('header.dashboard')}</NavLink>
-        <NavLink to="/add-sensor" className="nav-link">{t('header.addSensor')}</NavLink>
+        <NavLink to="/add-sensor" className="nav-link">{t('header.sensors')}</NavLink>
         <NavLink to="/history" className="nav-link">{t('header.history')}</NavLink>
       </nav>
 

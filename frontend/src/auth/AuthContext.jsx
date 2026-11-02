@@ -38,6 +38,15 @@ export function AuthProvider({ children }) {
     setUser(await api.updateMe(data))
   }
 
+  async function changeEmail(email, currentPassword) {
+    setUser(await api.changeEmail(email, currentPassword))
+  }
+
+  async function deleteAccount(currentPassword) {
+    await api.deleteAccount(currentPassword)
+    clearSession()
+  }
+
   async function logout() {
     try {
       await api.logout()
@@ -47,7 +56,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, updateProfile, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, updateProfile, changeEmail, deleteAccount, logout }}>
       {children}
     </AuthContext.Provider>
   )
