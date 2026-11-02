@@ -6,7 +6,8 @@
 //          Last Will (LWT) that reports the device as offline.
 //   Wi-Fi setup page (WiFiManager): the user enters the home Wi-Fi from a phone,
 //          no Wi-Fi password in the code.
-// The local alarm (buzzer + LED) is added in S2-03.
+//   S2-03: local alarm (buzzer + LED), decided on the device so it keeps
+//          working offline. Events are published to aqms/devices/{mac}/alarms.
 //
 // Board: ESP32 Dev Module    Serial Monitor: 115200 baud
 // Libraries:
@@ -32,8 +33,8 @@
 // Wi-Fi is on.
 // ---------------------------------------------------------------------------
 const int SENSOR_PIN = 34;   // divider midpoint (row 15 on the breadboard)
-const int BUZZER_PIN = 25;   // active piezo buzzer, used in S2-03
-const int LED_PIN    = 26;   // LED (with 220-330 ohm resistor), used in S2-03
+const int BUZZER_PIN = 25;   // active piezo buzzer: + to GPIO 25, - to GND
+const int LED_PIN    = 26;   // LED: GPIO 26 -> 220-330 ohm -> LED long leg; short leg to GND
 const int RESET_BUTTON_PIN = 0;   // the BOOT button on the board: hold 3 s to forget Wi-Fi
 
 // ---------------------------------------------------------------------------
@@ -56,6 +57,18 @@ const float CURVE_B = -0.67;    // log-log slope (datasheet range about -0.46 to
 const float REF_PPM = 1800.0;   // Figaro reference concentration
 
 // ---------------------------------------------------------------------------
+// Local alarm (S2-03)
+// The decision is made here, on the device, so the buzzer and LED work
+// without Wi-Fi or internet. Must match the thresholds in the dashboard.
+// ---------------------------------------------------------------------------
+const float ALARM_ON_PPM     = 1000.0;  // warning: alarm turns on (intermittent beep)
+const float ALARM_DANGER_PPM = 1500.0;  // danger: continuous beep
+const float ALARM_OFF_PPM    = 800.0;   // alarm turns off only below this (hysteresis)
+const unsigned long WARMUP_MS      = 120000;  // no alarm for 2 min after power-up (sensor not stable)
+const unsigned long BEEP_PERIOD_MS = 1000;    // warning beep: 0.5 s on, 0.5 s off
+const unsigned long SELF_TEST_MS   = 2000;    // short BOOT press: beep + LED for 2 s
+
+// ---------------------------------------------------------------------------
 // Timing
 // ---------------------------------------------------------------------------
 const unsigned long READ_INTERVAL_MS     = 5000;   // one reading every 5 s (data contract)
@@ -63,6 +76,7 @@ const unsigned long MQTT_RETRY_MS        = 5000;   // wait between broker connec
 const unsigned long WIFI_REPORT_MS       = 10000;  // how often to print "waiting for Wi-Fi"
 const unsigned long RESET_HOLD_MS        = 3000;   // hold BOOT this long to forget Wi-Fi
 const uint16_t      PORTAL_TIMEOUT_S     = 180;    // setup page closes after 3 min without use
+const unsigned long WIFI_RETRY_MS        = 30000;  // retry the saved Wi-Fi this often while offline
 const uint16_t      WIFI_CONNECT_TIMEOUT_S = 20;   // time to try the saved Wi-Fi at startup
 const unsigned long NTP_RETRY_MS         = 30000;  // restart NTP if the clock is still not set
 const char*         NTP_SERVER_BACKUP    = "time.google.com";
@@ -89,15 +103,30 @@ char deviceMac[13];          // 12 uppercase hex characters, e.g. A4CF123B9E01
 char clientId[20];           // "aqms-" + MAC
 char topicReadings[48];      // aqms/devices/{mac}/readings
 char topicStatus[48];        // aqms/devices/{mac}/status
+char topicAlarms[48];        // aqms/devices/{mac}/alarms
 char willPayload[96];        // offline status, published by the broker if the device drops
 
 unsigned long seq = 0;              // reading counter (data contract field "seq")
 unsigned long lastReadMs = 0;
 unsigned long lastMqttAttemptMs = 0;
 unsigned long lastWifiReportMs = 0;
+unsigned long lastWifiRetryMs = 0;
 bool wifiWasConnected = false;
 bool timeSynced = false;
 unsigned long lastNtpStartMs = 0;   // when NTP was last started (0 = not yet)
+
+// Alarm state
+enum AlarmLevel { ALARM_NONE, ALARM_WARNING, ALARM_DANGER };
+AlarmLevel alarmLevel = ALARM_NONE;
+bool alarmActive = false;           // true from alarm_on until alarm_off
+unsigned long selfTestUntilMs = 0;  // self-test running until this time (0 = off)
+
+// Last alarm event not yet delivered to the broker (sent when back online).
+// Only the latest event is kept: the web system needs the current state.
+bool alarmEventPending = false;
+bool pendingEventOn = false;        // true = alarm_on, false = alarm_off
+float pendingEventPpm = 0;
+char pendingEventTs[25] = "";       // device time of the event ("" if the clock was not set)
 
 // One sensor reading.
 struct Reading {
@@ -187,6 +216,13 @@ void printReading(const Reading& r) {
   } else {
     Serial.print("  (no signal - check wiring)");
   }
+  if (millis() < WARMUP_MS) {
+    Serial.print("  [warm-up]");
+  } else if (alarmLevel == ALARM_DANGER) {
+    Serial.print("  [ALARM: DANGER]");
+  } else if (alarmLevel == ALARM_WARNING) {
+    Serial.print("  [ALARM: WARNING]");
+  }
   if (r.raw >= ADC_NEAR_MAX) {
     Serial.print("  <-- ADC near max: check heater/electrode pins");
   }
@@ -209,7 +245,6 @@ void publishOnlineStatus() {
 }
 
 // Reading payload as defined in docs/04-api-specifications.md.
-// alarm_active stays false until the local alarm is added in S2-03.
 void publishReading(const Reading& r) {
   char ts[25];
   currentIsoTime(ts, sizeof(ts));
@@ -217,8 +252,9 @@ void publishReading(const Reading& r) {
   snprintf(payload, sizeof(payload),
            "{\"device_id\":\"%s\",\"seq\":%lu,\"sensor_raw_adc\":%d,"
            "\"sensor_voltage\":%.3f,\"rs_ro_ratio\":%.3f,\"lpg_ppm_est\":%.0f,"
-           "\"alarm_active\":false,\"ts\":\"%s\"}",
-           deviceMac, seq, r.raw, r.vout, r.rsRo, r.ppm, ts);
+           "\"alarm_active\":%s,\"ts\":\"%s\"}",
+           deviceMac, seq, r.raw, r.vout, r.rsRo, r.ppm,
+           alarmActive ? "true" : "false", ts);
   uint16_t id = mqttClient.publish(topicReadings, 1, false, payload);
   if (id) {
     Serial.printf("  -> published (packet %u)", id);
@@ -227,9 +263,34 @@ void publishReading(const Reading& r) {
   }
 }
 
+// Alarm event payload as defined in docs/04-api-specifications.md.
+// Sends the pending event if the broker is connected and the clock is set.
+void sendPendingAlarmEvent() {
+  if (!alarmEventPending || !mqttClient.connected() || !timeSynced) {
+    return;
+  }
+  // An event that happened before the clock was set gets the current time.
+  if (pendingEventTs[0] == '\0') {
+    currentIsoTime(pendingEventTs, sizeof(pendingEventTs));
+  }
+  char payload[192];
+  snprintf(payload, sizeof(payload),
+           "{\"device_id\":\"%s\",\"event\":\"%s\",\"lpg_ppm_est\":%.0f,"
+           "\"threshold_ppm\":%.0f,\"ts\":\"%s\"}",
+           deviceMac, pendingEventOn ? "alarm_on" : "alarm_off",
+           pendingEventPpm, ALARM_ON_PPM, pendingEventTs);
+  uint16_t id = mqttClient.publish(topicAlarms, 1, false, payload);
+  if (id) {
+    Serial.printf("[mqtt] %s -> queued (packet %u)\n",
+                  pendingEventOn ? "alarm_on" : "alarm_off", id);
+    alarmEventPending = false;
+  }
+}
+
 void onMqttConnect(bool sessionPresent) {
   Serial.println("[mqtt] connected to broker");
   publishOnlineStatus();
+  sendPendingAlarmEvent();   // an alarm that changed while offline
 }
 
 void onMqttDisconnect(espMqttClientTypes::DisconnectReason reason) {
@@ -247,6 +308,7 @@ void setupMqtt() {
   snprintf(clientId, sizeof(clientId), "aqms-%s", deviceMac);
   snprintf(topicReadings, sizeof(topicReadings), "aqms/devices/%s/readings", deviceMac);
   snprintf(topicStatus, sizeof(topicStatus), "aqms/devices/%s/status", deviceMac);
+  snprintf(topicAlarms, sizeof(topicAlarms), "aqms/devices/%s/alarms", deviceMac);
 
   // The broker publishes this (retained) if the device disconnects without
   // saying goodbye: power loss, Wi-Fi loss, crash. It has no "ts" because it
@@ -291,12 +353,13 @@ void onPortalStarted(WiFiManager* wm) {
   Serial.println();
 }
 
-// Nobody used the setup page in time. Restart to try the saved Wi-Fi again
-// (for example, the router was off when the device started).
+// Nobody used the setup page in time (for example, the router was off when the
+// device started). The device does NOT restart, because a restart would also
+// restart the sensor warm-up and pause the local alarm. maintainConnections()
+// keeps retrying the saved Wi-Fi, or reopens the setup page if none is saved.
 void onPortalTimeout() {
-  Serial.println("[wifi] setup page timed out, restarting...");
-  delay(200);
-  ESP.restart();
+  Serial.println("[wifi] setup page closed (timeout)");
+  lastWifiRetryMs = millis();
 }
 
 void setupWifi() {
@@ -322,11 +385,17 @@ void setupWifi() {
   }
 }
 
-// Hold the BOOT button for 3 s: forget the saved Wi-Fi and restart into the setup page.
-// Used when moving the device to another home or after changing the router password.
+// BOOT button:
+//   short press  -> alarm self-test (buzzer + LED for 2 s), nothing is sent
+//   hold for 3 s -> forget the saved Wi-Fi and restart into the setup page
+//                   (moving to another home, or the router password changed)
 void checkResetButton() {
   bool pressed = (digitalRead(RESET_BUTTON_PIN) == LOW);
   if (!pressed) {
+    if (resetPressedMs != 0 && millis() - resetPressedMs >= 50) {   // 50 ms: ignore contact bounce
+      Serial.println("[alarm] self-test: buzzer and LED on for 2 s");
+      selfTestUntilMs = millis() + SELF_TEST_MS;
+    }
     resetPressedMs = 0;
     return;
   }
@@ -362,6 +431,20 @@ void maintainConnections() {
     lastWifiReportMs = now;
   }
   wifiWasConnected = wifiUp;
+
+  // No Wi-Fi and no setup page: retry the saved Wi-Fi, or reopen the setup page
+  // if nothing is saved yet. The sensor and the local alarm keep running.
+  if (!wifiUp && !wifiManager.getConfigPortalActive()
+      && now - lastWifiRetryMs >= WIFI_RETRY_MS) {
+    lastWifiRetryMs = now;
+    if (wifiManager.getWiFiIsSaved()) {
+      Serial.println("[wifi] retrying the saved Wi-Fi...");
+      WiFi.mode(WIFI_STA);
+      WiFi.begin();                     // uses the Wi-Fi saved by the setup page
+    } else {
+      wifiManager.startConfigPortal(portalName, PORTAL_PASSWORD);
+    }
+  }
   if (!wifiUp) {
     return;
   }
@@ -394,6 +477,84 @@ void maintainConnections() {
 }
 
 // ---------------------------------------------------------------------------
+// Local alarm (S2-03)
+// ---------------------------------------------------------------------------
+
+// Remembers an alarm_on / alarm_off event so it reaches the broker, now or
+// when the device is back online.
+void queueAlarmEvent(bool on, float ppm) {
+  alarmEventPending = true;
+  pendingEventOn = on;
+  pendingEventPpm = ppm;
+  if (timeSynced) {
+    currentIsoTime(pendingEventTs, sizeof(pendingEventTs));
+  } else {
+    pendingEventTs[0] = '\0';
+  }
+  sendPendingAlarmEvent();
+}
+
+// Decides the alarm level from one reading. Called every READ_INTERVAL_MS.
+//   on:     ppm >= ALARM_ON_PPM
+//   danger: ppm >= ALARM_DANGER_PPM
+//   off:    ppm <  ALARM_OFF_PPM (the gap stops the alarm flickering
+//           when the reading hovers around the threshold)
+// A reading without a valid signal does not change the alarm.
+void evaluateAlarm(const Reading& r) {
+  if (!r.valid || millis() < WARMUP_MS) {
+    return;
+  }
+
+  bool wasActive = alarmActive;
+  if (!alarmActive && r.ppm >= ALARM_ON_PPM) {
+    alarmActive = true;
+  } else if (alarmActive && r.ppm < ALARM_OFF_PPM) {
+    alarmActive = false;
+  }
+
+  if (!alarmActive) {
+    alarmLevel = ALARM_NONE;
+  } else if (r.ppm >= ALARM_DANGER_PPM) {
+    alarmLevel = ALARM_DANGER;
+  } else if (alarmLevel == ALARM_NONE || r.ppm < ALARM_ON_PPM) {
+    alarmLevel = ALARM_WARNING;   // danger drops back to warning below ALARM_ON_PPM
+  }
+
+  if (alarmActive && !wasActive) {
+    Serial.printf("[alarm] ON  (%.0f ppm >= %.0f)\n", r.ppm, ALARM_ON_PPM);
+    queueAlarmEvent(true, r.ppm);
+  } else if (!alarmActive && wasActive) {
+    Serial.printf("[alarm] OFF (%.0f ppm < %.0f)\n", r.ppm, ALARM_OFF_PPM);
+    queueAlarmEvent(false, r.ppm);
+  }
+}
+
+// Drives the buzzer and LED. Called on every loop pass, so the beep keeps its
+// rhythm between readings.
+//   warning: LED on, buzzer beeps (0.5 s on / 0.5 s off)
+//   danger:  LED on, buzzer continuous
+void updateAlarmOutputs() {
+  unsigned long now = millis();
+  bool selfTest = (selfTestUntilMs != 0);
+  if (selfTest && (long)(now - selfTestUntilMs) >= 0) {
+    selfTestUntilMs = 0;
+    selfTest = false;
+  }
+
+  bool led = false;
+  bool buzzer = false;
+  if (selfTest || alarmLevel == ALARM_DANGER) {
+    led = true;
+    buzzer = true;
+  } else if (alarmLevel == ALARM_WARNING) {
+    led = true;
+    buzzer = (now % BEEP_PERIOD_MS) < (BEEP_PERIOD_MS / 2);
+  }
+  digitalWrite(LED_PIN, led ? HIGH : LOW);
+  digitalWrite(BUZZER_PIN, buzzer ? HIGH : LOW);
+}
+
+// ---------------------------------------------------------------------------
 // Arduino entry points
 // ---------------------------------------------------------------------------
 void setup() {
@@ -416,7 +577,10 @@ void setup() {
   Serial.printf("Device MAC (device_id): %s\n", deviceMac);
   Serial.println("Note: let the sensor heater warm up before trusting the readings.");
   Serial.println("      ppm values are uncalibrated estimates.");
-  Serial.println("      Hold BOOT for 3 s to change the Wi-Fi.");
+  Serial.println("      BOOT button: short press = alarm self-test, hold 3 s = change the Wi-Fi.");
+  Serial.printf("      Alarm: on at %.0f ppm, danger at %.0f ppm, off below %.0f ppm.\n",
+                ALARM_ON_PPM, ALARM_DANGER_PPM, ALARM_OFF_PPM);
+  Serial.printf("      Alarm disabled for the first %lu s (sensor warm-up).\n", WARMUP_MS / 1000);
   Serial.println();
 
   setupMqtt();                     // builds clientId, used as the Wi-Fi hostname
@@ -424,10 +588,12 @@ void setup() {
 }
 
 void loop() {
+  updateAlarmOutputs();             // first, so the buzzer and LED never wait for the network
   wifiManager.process();            // serves the setup page while it is open
   checkResetButton();
   mqttClient.loop();
   maintainConnections();
+  sendPendingAlarmEvent();          // alarm event from while the broker or clock was not ready
 
   unsigned long now = millis();
   if (now - lastReadMs < READ_INTERVAL_MS) {
@@ -437,6 +603,7 @@ void loop() {
   seq++;   // counts every reading, so gaps in "seq" show readings lost while offline
 
   Reading r = takeReading();
+  evaluateAlarm(r);          // local decision: works without Wi-Fi or internet
   printReading(r);
 
   if (!r.valid) {
