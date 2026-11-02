@@ -86,8 +86,13 @@ export const api = {
   logout: () => request('/auth/logout', { method: 'POST' }),
   me: () => request('/auth/me'),
   updateMe: (data) => request('/auth/me', { method: 'PATCH', body: data }),
+  changeEmail: (email, currentPassword) =>
+    request('/auth/me/email', { method: 'PATCH', body: { email, current_password: currentPassword } }),
+  deleteAccount: (currentPassword) =>
+    request('/auth/me', { method: 'DELETE', body: { current_password: currentPassword } }),
   listDevices: () => request('/devices'),
   linkDevice: (device) => request('/devices', { method: 'POST', body: device }),
+  unlinkDevice: (mac) => request(`/devices/${mac}`, { method: 'DELETE' }),
   readings: (mac, params) => request(`/devices/${mac}/readings?${query(params)}`),
   latestReading: (mac) => request(`/devices/${mac}/readings/latest`),
   alerts: (params) => request(`/alerts?${query(params)}`)

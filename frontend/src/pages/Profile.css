@@ -67,3 +67,57 @@
 .btn-danger-outline:hover {
   border-color: var(--danger-ink);
 }
+
+.profile-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.email-row {
+  display: flex;
+  gap: 10px;
+}
+
+.email-row .readonly-value {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.email-row .btn {
+  height: 46px;
+}
+
+.profile-subform {
+  margin-top: 16px;
+}
+
+.profile-actions-end {
+  justify-content: flex-end;
+}
+
+.danger-zone {
+  margin-top: 24px;
+  padding: 18px;
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius);
+  background: var(--danger-bg);
+}
+
+.danger-zone h2 {
+  margin-bottom: 6px;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--danger-ink);
+}
+
+.danger-zone p {
+  margin-bottom: 14px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.danger-zone .btn {
+  height: 44px;
+}

@@ -37,4 +37,20 @@ async function updateMe(req, res) {
   res.json(user);
 }
 
-module.exports = { register, login, logout, me, updateMe };
+async function changeEmail(req, res) {
+  const body = req.body || {};
+  const email = requireEmail(body.email);
+  const currentPassword = requireString(body.current_password, 'current_password', { max: 72 });
+  const user = await authService.changeEmail(req.userId, email, currentPassword);
+  res.json(user);
+}
+
+async function deleteMe(req, res) {
+  const body = req.body || {};
+  const currentPassword = requireString(body.current_password, 'current_password', { max: 72 });
+  await authService.deleteAccount(req.userId, currentPassword);
+  realtimeGateway.disconnectUser(req.userId);
+  res.status(204).end();
+}
+
+module.exports = { register, login, logout, me, updateMe, changeEmail, deleteMe };

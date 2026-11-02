@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const BaseModel = require('./BaseModel');
 const HttpError = require('../errors/HttpError');
 const prisma = require('../db/prisma');
+const Device = require('./Device');
 const { bcryptRounds } = require('../config/auth');
 
 const UNIQUE_VIOLATION = 'P2002';
@@ -43,6 +44,32 @@ class User extends BaseModel {
     });
     Object.assign(this, row);
     return this;
+  }
+
+  async changeEmail(email) {
+    try {
+      const row = await prisma.user.update({
+        where: { id: this.id },
+        data: { email },
+      });
+      Object.assign(this, row);
+      return this;
+    } catch (err) {
+      if (err.code === UNIQUE_VIOLATION) {
+        throw new HttpError(409, 'EMAIL_TAKEN', 'An account with this email already exists.');
+      }
+      throw err;
+    }
+  }
+
+  // Deletes the account in one transaction: its devices are unlinked first
+  // (their history is deleted), then the user row. Sessions are deleted by the
+  // database (ON DELETE CASCADE), so every token of this account stops working.
+  async delete() {
+    await prisma.$transaction(async (tx) => {
+      await Device.releaseAllOwnedBy(tx, this.id);
+      await tx.user.delete({ where: { id: this.id } });
+    });
   }
 
   toJSON() {

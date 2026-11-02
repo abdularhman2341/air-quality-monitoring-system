@@ -79,3 +79,84 @@
   line-height: 1.6;
   color: var(--text-muted);
 }
+
+.add-sensor-side {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.my-sensors {
+  padding: 22px;
+}
+
+.my-sensors h2 {
+  margin-bottom: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.sensors-empty {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.sensor-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.sensor-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.sensor-row:first-child {
+  border-top: 0;
+}
+
+.sensor-info {
+  min-width: 0;
+}
+
+.sensor-name {
+  font-weight: 600;
+  color: var(--text-strong);
+  overflow-wrap: anywhere;
+}
+
+.sensor-mac {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.sensor-confirm {
+  flex-basis: 100%;
+  padding: 12px;
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius);
+  background: var(--danger-bg);
+}
+
+.sensor-confirm p {
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: var(--danger-ink);
+}
+
+.sensor-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
