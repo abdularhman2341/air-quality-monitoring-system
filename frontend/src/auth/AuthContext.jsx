@@ -1,11 +1,13 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { api, getToken, setToken, setUnauthorizedHandler } from '../api/client'
+import { connectSocket, disconnectSocket } from '../realtime/socketClient'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(() => Boolean(getToken()))
+  const signedIn = Boolean(user)
 
   function clearSession() {
     setToken(null)
@@ -22,6 +24,14 @@ export function AuthProvider({ children }) {
       .catch(clearSession)
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    if (signedIn) {
+      connectSocket()
+    } else {
+      disconnectSocket()
+    }
+  }, [signedIn])
 
   async function login(email, password) {
     const data = await api.login(email, password)
