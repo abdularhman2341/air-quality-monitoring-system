@@ -166,6 +166,7 @@ The system has five tiers. The local alarm runs entirely on the edge tier, so a 
 | `AddSensor` | Add Sensor | `POST /devices` with MAC address, pairing code, name, and location; `DELETE /devices/:mac` | US-05 |
 | `Profile` | Profile | `PATCH /auth/me`, `PATCH /auth/me/email`, `DELETE /auth/me` | US-01 |
 | `client.js` (API client) | — | Adds `Authorization: Bearer <token>` and reads the shared error format | US-06 |
+| `socketClient.js` (Socket.IO client) | All signed-in pages | Opens one Socket.IO connection with the JWT after sign-in and closes it on sign-out. On `reading:new`, `alert:new`, or `device:status`, and after every reconnect, the open page reloads its data through REST | US-02, US-04, US-08 |
 | `LanguageContext` | All | Arabic (right-to-left) and English | — |
 
 ### 3.3 Backend Class Diagram
@@ -809,7 +810,9 @@ All errors use one shape:
 
 ### 5.4 Real-Time Updates (WebSocket via Socket.IO)
 
-So the dashboard shows new readings and alerts without refreshing, the backend pushes events over Socket.IO. The client connects with its JWT, and the server places it only in rooms for that user's devices, so the O3 access rule applies here too.
+So the dashboard shows new readings and alerts without refreshing, the backend pushes events over Socket.IO. The client connects with its JWT, and the server places it only in the room `user:{userId}`, so the O3 access rule applies here too. Logging out closes that session's sockets, and deleting the account closes all of the user's sockets.
+
+The dashboard uses each event as a signal to reload its data through REST, rather than merging the event payload into the page. REST stays the single source of truth, and a reconnect reloads anything missed while offline. As a fallback, the pages also refresh every 60 s. Measured locally, an event reaches the owner's browser in about 15 ms; another account receives nothing.
 
 | Event | Payload |
 |---|---|
@@ -937,7 +940,7 @@ ACL generated for each device, with its broker username `aqms-{mac}`: `user aqms
 
 | # | Decision | Reason | Alternative rejected | Supports |
 | --- | --- | --- | --- | --- |
-| 27 | Socket.IO for live updates | The server pushes events immediately. Rooms per user (`user:{userId}`) keep each account's data separate, and the client reconnects automatically. | Polling: delay up to the polling interval and repeated requests. Plain WebSocket: rooms, reconnection, and authentication would have to be built by hand. | US-02, US-04, US-08, O3 |
+| 27 | Socket.IO for live updates; each event triggers a REST reload | The server pushes events immediately, so the dashboard reflects the device within a second instead of up to 10 s, and a device going offline (Last Will) shows at once. Rooms per user (`user:{userId}`) keep each account's data separate, and the client reconnects automatically. Reloading through REST keeps one source of truth. Cost: each event causes a few REST requests, which is fine for a few devices. The mentor noted Socket.IO is not required, because the safety alarm is local; the team kept it for the dashboard. | Polling only: delay up to the polling interval and requests even when nothing changes. Applying event payloads directly: two ways to update the same data. Plain WebSocket: rooms, reconnection, and authentication would have to be built by hand. | US-02, US-04, US-08, O3 |
 | 28 | React single-page application designed in Figma | Reusable components and live updates without reloading the page. Figma is the design tool required by the mentors. | Plain JavaScript and DOM updates: harder to keep many live device views in sync. | US-02, US-05 |
 | 28a | *(Stage 4)* One domain: the backend serves the built frontend | One URL for the site, the API, and Socket.IO (mentor recommendation), so there are no cross-origin settings to keep in sync and one deploy updates everything. | Frontend on Vercel and backend on Railway: two URLs, CORS configuration, and two deploys. | — |
 | 28b | *(Stage 4)* Arabic and English, with right-to-left layout | The users are restaurant and home-kitchen owners in Saudi Arabia. | English only. | US-02 |
