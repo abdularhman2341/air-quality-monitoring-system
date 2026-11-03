@@ -10,6 +10,7 @@ Owner: Abdulmalik Alaqeel (Hardware Developer).
 | S1-05 | Reads the Figaro TGS2610-D00 every 5 s and estimates LPG ppm (uncalibrated) |
 | S1-07 | Wi-Fi setup page, NTP time sync, readings published over MQTT with TLS (QoS 1), online status and Last Will |
 | S2-03 | Local alarm on the buzzer and LED, decided on the device, so it works without internet |
+| Status LEDs | Green Power LED (hardware) and green Wi-Fi LED showing the connection state |
 
 How a reading becomes a ppm value: [`docs/ppm-conversion.md`](docs/ppm-conversion.md).
 
@@ -23,7 +24,9 @@ How a reading becomes a ppm value: [`docs/ppm-conversion.md`](docs/ppm-conversio
 | 100 nF capacitor | Across R2 (ADC pin to GND), reduces noise |
 | 100 µF capacitor | Across the 5 V and GND rails |
 | Buzzer SFM-27 | Active piezo, 3–24 V, no transistor needed |
-| LED + resistor | 220–330 Ω recommended (10 kΩ works, but the LED is dim) |
+| Red LED + 330 Ω | Alarm LED on GPIO 26 |
+| Green LED + 220 Ω | Power LED, wired to 3V3 (no code) |
+| Green LED + 220 Ω | Wi-Fi LED on GPIO 27 |
 
 ### Wiring
 
@@ -32,7 +35,9 @@ Sensor heater:   pin 1 -> 5V      pin 4 -> GND      (no polarity)
 Sensor circuit:  5V -> pin 3 (+) -> pin 2 (-) = Vout -> RL -> GND
 Divider:         Vout -> R1 -> GPIO 34 -> R2 -> GND
 Buzzer:          red -> GPIO 25        black -> GND
-LED:             GPIO 26 -> resistor -> long leg      short leg -> GND
+Alarm LED (red): GPIO 26 -> 330 ohm -> long leg      short leg -> GND
+Power LED:       3V3 -> 220 ohm -> long leg           short leg -> GND
+Wi-Fi LED:       GPIO 27 -> 220 ohm -> long leg       short leg -> GND
 ESP32 power:     5V (VIN) -> 5V rail   GND -> GND rail
 ```
 
@@ -40,12 +45,16 @@ ESP32 power:     5V (VIN) -> 5V rail   GND -> GND rail
 |---|---|
 | Sensor (divider midpoint) | GPIO 34 |
 | Buzzer | GPIO 25 |
-| LED | GPIO 26 |
+| Alarm LED | GPIO 26 |
+| Wi-Fi LED | GPIO 27 |
+| Power LED | 3V3 (not a GPIO) |
 | BOOT button (on the board) | GPIO 0 |
 
 > **Warning:** ESP32 pins accept at most 3.3 V. The sensor output can approach 5 V, so the R1/R2 divider halves it (maximum 2.5 V at the pin). Never connect the sensor output to the ESP32 directly.
 
 > **Use an ADC1 pin (GPIO 32–39) for the sensor.** ADC2 pins stop working while Wi-Fi is on.
+
+> **The 3V3 wire for the Power LED goes to its own breadboard row, never to the red rail.** The red rail carries 5 V; joining 3V3 to 5V can damage the board's voltage regulator.
 
 > **Do not connect the CMD, SD0–SD3, or CLK pins.** They are used by the board's flash memory.
 
@@ -128,6 +137,21 @@ The Wi-Fi stays saved after power loss. If the saved Wi-Fi is not available, the
 - The thresholds are `ALARM_ON_PPM`, `ALARM_DANGER_PPM`, and `ALARM_OFF_PPM` in `gas_monitor.ino`. They must match the dashboard.
 - ppm values are uncalibrated estimates. See [`docs/ppm-conversion.md`](docs/ppm-conversion.md).
 
+## Status LEDs
+
+**Power LED:** on whenever the board has power. It is wired directly to 3V3, so it stays on even if the code stops.
+
+**Wi-Fi LED:**
+
+| LED | Meaning |
+|---|---|
+| On | Wi-Fi and broker connected: readings are being sent |
+| Slow blink (1 s) | Wi-Fi connected, but the broker is not (or the clock is not synced yet) |
+| Fast blink | Wi-Fi setup page `AQMS-Setup-XXXX` is open and waiting |
+| Off | No Wi-Fi |
+
+The blink can pause for 2–3 s while the device connects to the broker (TLS handshake). The local alarm is not affected.
+
 ## MQTT messages
 
 | Topic | QoS | Retained | Sent when |
@@ -179,7 +203,11 @@ The same MAC is used for the broker username (`aqms-<MAC>`).
 | Gas response | After warm-up, an **unlit** lighter about 10 cm from the sensor for 1–2 s | `[alarm] ON`, `alarm_on` published; `[alarm] OFF` below 800 ppm |
 | Offline alarm | Connect through a phone hotspot, turn the hotspot off, repeat the gas test | Buzzer works; `alarm_on` is sent after turning the hotspot back on |
 | Last Will | Unplug USB | Status becomes `offline` after about 45 s |
-| Wi-Fi reset | Hold BOOT for 3 s | Setup page opens again |
+| Wi-Fi reset | Hold BOOT for 3 s | Setup page opens again; Wi-Fi LED blinks fast |
+| Power LED | Plug in USB | Power LED on immediately |
+| Wi-Fi LED: connected | Wait for `[mqtt] connected to broker` | Wi-Fi LED steady on |
+| Wi-Fi LED: no broker | Wrong `MQTT_PASSWORD` in `config.h` | Wi-Fi LED blinks slowly |
+| Wi-Fi LED: no Wi-Fi | Turn the hotspot or router off | Wi-Fi LED off |
 
 > **Gas tests:** only with supervisor approval, in a ventilated area, with no flames or sparks nearby.
 

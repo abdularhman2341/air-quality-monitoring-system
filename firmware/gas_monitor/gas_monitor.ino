@@ -8,6 +8,8 @@
 //          no Wi-Fi password in the code.
 //   S2-03: local alarm (buzzer + LED), decided on the device so it keeps
 //          working offline. Events are published to aqms/devices/{mac}/alarms.
+//   Status LEDs (green): Power LED wired to 3V3 (hardware only, no code), and a
+//          Wi-Fi LED on GPIO 27 that shows the connection state.
 //
 // Board: ESP32 Dev Module    Serial Monitor: 115200 baud
 // Libraries:
@@ -34,8 +36,11 @@
 // ---------------------------------------------------------------------------
 const int SENSOR_PIN = 34;   // divider midpoint (row 15 on the breadboard)
 const int BUZZER_PIN = 25;   // active piezo buzzer: + to GPIO 25, - to GND
-const int LED_PIN    = 26;   // LED: GPIO 26 -> 220-330 ohm -> LED long leg; short leg to GND
+const int LED_PIN    = 26;   // red alarm LED: GPIO 26 -> 330 ohm -> LED long leg; short leg to GND
 const int RESET_BUTTON_PIN = 0;   // the BOOT button on the board: hold 3 s to forget Wi-Fi
+const int WIFI_LED_PIN = 27;      // green Wi-Fi LED: GPIO 27 -> 220 ohm -> LED long leg; short leg to GND
+// Power LED (green): 3V3 pin -> 220 ohm -> LED long leg; short leg to GND.
+// It is not controlled by the code: it stays on whenever the board has power.
 
 // ---------------------------------------------------------------------------
 // Sensor circuit (current breadboard: all resistors are 10k)
@@ -67,6 +72,16 @@ const float ALARM_OFF_PPM    = 800.0;   // alarm turns off only below this (hyst
 const unsigned long WARMUP_MS      = 120000;  // no alarm for 2 min after power-up (sensor not stable)
 const unsigned long BEEP_PERIOD_MS = 1000;    // warning beep: 0.5 s on, 0.5 s off
 const unsigned long SELF_TEST_MS   = 2000;    // short BOOT press: beep + LED for 2 s
+
+// ---------------------------------------------------------------------------
+// Wi-Fi LED
+//   on          Wi-Fi and broker connected: readings are being sent
+//   slow blink  Wi-Fi connected, broker not connected (or clock not synced yet)
+//   fast blink  Wi-Fi setup page (AQMS-Setup-XXXX) is open and waiting
+//   off         no Wi-Fi
+// ---------------------------------------------------------------------------
+const unsigned long WIFI_LED_SLOW_MS = 1000;  // slow blink: 0.5 s on, 0.5 s off
+const unsigned long WIFI_LED_FAST_MS = 200;   // fast blink: 0.1 s on, 0.1 s off
 
 // ---------------------------------------------------------------------------
 // Timing
@@ -555,6 +570,26 @@ void updateAlarmOutputs() {
 }
 
 // ---------------------------------------------------------------------------
+// Wi-Fi LED
+// Called on every loop pass, so the blink keeps its rhythm. It only reads the
+// connection state and never waits, so it cannot delay the local alarm.
+// ---------------------------------------------------------------------------
+void updateWifiLed() {
+  unsigned long now = millis();
+  bool led;
+  if (wifiManager.getConfigPortalActive()) {
+    led = (now % WIFI_LED_FAST_MS) < (WIFI_LED_FAST_MS / 2);   // setup page open
+  } else if (WiFi.status() != WL_CONNECTED) {
+    led = false;                                                // no Wi-Fi
+  } else if (mqttClient.connected()) {
+    led = true;                                                 // all connected
+  } else {
+    led = (now % WIFI_LED_SLOW_MS) < (WIFI_LED_SLOW_MS / 2);   // Wi-Fi only
+  }
+  digitalWrite(WIFI_LED_PIN, led ? HIGH : LOW);
+}
+
+// ---------------------------------------------------------------------------
 // Arduino entry points
 // ---------------------------------------------------------------------------
 void setup() {
@@ -563,9 +598,11 @@ void setup() {
 
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
+  pinMode(WIFI_LED_PIN, OUTPUT);
   pinMode(RESET_BUTTON_PIN, INPUT_PULLUP);
   digitalWrite(BUZZER_PIN, LOW);
   digitalWrite(LED_PIN, LOW);
+  digitalWrite(WIFI_LED_PIN, LOW);
 
   analogReadResolution(12);         // raw values 0-4095
   analogSetAttenuation(ADC_11db);   // pin range up to about 3.1 V
@@ -581,6 +618,7 @@ void setup() {
   Serial.printf("      Alarm: on at %.0f ppm, danger at %.0f ppm, off below %.0f ppm.\n",
                 ALARM_ON_PPM, ALARM_DANGER_PPM, ALARM_OFF_PPM);
   Serial.printf("      Alarm disabled for the first %lu s (sensor warm-up).\n", WARMUP_MS / 1000);
+  Serial.println("      Wi-Fi LED: on = sending, slow blink = no broker, fast blink = setup page, off = no Wi-Fi.");
   Serial.println();
 
   setupMqtt();                     // builds clientId, used as the Wi-Fi hostname
@@ -589,6 +627,7 @@ void setup() {
 
 void loop() {
   updateAlarmOutputs();             // first, so the buzzer and LED never wait for the network
+  updateWifiLed();
   wifiManager.process();            // serves the setup page while it is open
   checkResetButton();
   mqttClient.loop();
