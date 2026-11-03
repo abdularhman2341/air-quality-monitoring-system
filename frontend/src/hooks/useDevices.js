@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
+import { onLiveUpdate } from '../realtime/socketClient'
 
 export function useDevices(refreshMs) {
   const [devices, setDevices] = useState([])
@@ -19,7 +20,11 @@ export function useDevices(refreshMs) {
 
     load()
     const timer = setInterval(load, refreshMs)
-    return () => clearInterval(timer)
+    const stopLiveUpdates = onLiveUpdate(load)
+    return () => {
+      clearInterval(timer)
+      stopLiveUpdates()
+    }
   }, [refreshMs])
 
   return { devices, loading, error }

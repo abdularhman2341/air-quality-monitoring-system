@@ -8,7 +8,7 @@ import { downloadCsv } from '../utils/csv'
 import { formatDateTime, formatDuration, formatPpm } from '../utils/format'
 import './History.css'
 
-const REFRESH_MS = 15000
+const REFRESH_MS = 60000
 const PAGE_SIZE = 50
 const EXPORT_LIMIT = 1000
 const RANGES = [

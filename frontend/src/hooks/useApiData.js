@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { onLiveUpdate } from '../realtime/socketClient'
 
 export function useApiData(request, key, refreshMs) {
   const [state, setState] = useState({ key: null, data: null, error: null })
@@ -26,9 +27,11 @@ export function useApiData(request, key, refreshMs) {
 
     load()
     const timer = refreshMs ? setInterval(load, refreshMs) : null
+    const stopLiveUpdates = onLiveUpdate(load)
     return () => {
       active = false
       clearInterval(timer)
+      stopLiveUpdates()
     }
   }, [key, refreshMs])
 

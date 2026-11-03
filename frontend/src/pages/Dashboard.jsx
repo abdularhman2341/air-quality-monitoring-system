@@ -9,7 +9,7 @@ import { useLanguage } from '../i18n/LanguageContext'
 import { GAUGE_MAX_PPM, THRESHOLD_PPM, formatDateTime, formatPpm, formatTime } from '../utils/format'
 import './Dashboard.css'
 
-const REFRESH_MS = 10000
+const REFRESH_MS = 60000
 const CHART_POINTS = 30
 const STATE_COLORS = {
   safe: { ink: 'var(--safe-ink)', dot: 'var(--safe-dot)', fill: 'rgba(47, 143, 108, 0.12)' },
