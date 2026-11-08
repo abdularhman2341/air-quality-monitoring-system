@@ -34,6 +34,16 @@ function requirePassword(value) {
   return value;
 }
 
+function requirePasswordInput(value, field) {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw invalid(`${field} is required.`);
+  }
+  if (Buffer.byteLength(value, 'utf8') > 72) {
+    throw invalid(`${field} must be at most 72 bytes.`);
+  }
+  return value;
+}
+
 function optionalString(value, field, max) {
   if (value === undefined || value === null || value === '') {
     return null;
@@ -67,5 +77,5 @@ function optionalInt(value, field, { min = 1, max, fallback }) {
 }
 
 module.exports = {
-  requireString, requireEmail, requirePassword, optionalString, optionalDate, optionalInt, invalid,
+  requireString, requireEmail, requirePassword, requirePasswordInput, optionalString, optionalDate, optionalInt, invalid,
 };

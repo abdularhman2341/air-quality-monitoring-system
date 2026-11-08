@@ -51,6 +51,13 @@ describe('sign-up and sign-in', () => {
     const user = await signUp();
     await api().post('/api/v1/auth/login').send({ email: user.email, password: 'wrong-password' }).expect(401);
   });
+
+  test('a password with spaces at the start or end is kept exactly as typed', async () => {
+    const password = ' secret123 ';
+    await api().post('/api/v1/auth/register').send({ name: 'A', email: 'a@test.local', password }).expect(201);
+    await api().post('/api/v1/auth/login').send({ email: 'a@test.local', password }).expect(200);
+    await api().post('/api/v1/auth/login').send({ email: 'a@test.local', password: 'secret123' }).expect(401);
+  });
 });
 
 describe('sessions', () => {
@@ -76,6 +83,17 @@ describe('account deletion', () => {
       .expect(403);
     expect(res.body.error.code).toBe('WRONG_PASSWORD');
     await api().get('/api/v1/auth/me').set(user.auth).expect(200);
+  });
+
+  test('accepts a current password with spaces at the start or end', async () => {
+    const password = ' secret123 ';
+    await api().post('/api/v1/auth/register').send({ name: 'A', email: 'a@test.local', password }).expect(201);
+    const login = await api().post('/api/v1/auth/login').send({ email: 'a@test.local', password }).expect(200);
+    await api()
+      .delete('/api/v1/auth/me')
+      .set({ Authorization: `Bearer ${login.body.token}` })
+      .send({ current_password: password })
+      .expect(204);
   });
 
   test('deletes the account, ends its sessions, and frees its devices with no old data', async () => {
