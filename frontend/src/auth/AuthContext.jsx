@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { api, getToken, setToken, setUnauthorizedHandler } from '../api/client'
+import { api, getToken, setToken, setUnauthorizedHandler, TOKEN_KEY } from '../api/client'
 import { connectSocket, disconnectSocket } from '../realtime/socketClient'
 
 const AuthContext = createContext(null)
@@ -30,6 +30,29 @@ export function AuthProvider({ children }) {
       connectSocket()
     } else {
       disconnectSocket()
+    }
+  }, [signedIn])
+
+  useEffect(() => {
+    if (!signedIn) return
+    function checkToken() {
+      if (!getToken()) clearSession()
+    }
+    function onVisible() {
+      if (document.visibilityState === 'visible') checkToken()
+    }
+    function onStorage(e) {
+      if (e.key !== null && e.key !== TOKEN_KEY) return
+      if (!getToken()) clearSession()
+      else window.location.reload()
+    }
+    window.addEventListener('focus', checkToken)
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('storage', onStorage)
+    return () => {
+      window.removeEventListener('focus', checkToken)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('storage', onStorage)
     }
   }, [signedIn])
 
