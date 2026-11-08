@@ -24,11 +24,11 @@ class AuthService {
   }
 
   async generateToken(userId) {
-    const expiresAt = new Date(Date.now() + this.expiryMs());
-    const session = await Session.start(userId, expiresAt);
-    return jwt.sign({ sid: session.id }, jwtSecret, {
+    const issuedAt = Math.floor(Date.now() / 1000);
+    const expiresAt = issuedAt + Math.floor(this.expiryMs() / 1000);
+    const session = await Session.start(userId, new Date(expiresAt * 1000));
+    return jwt.sign({ sid: session.id, iat: issuedAt, exp: expiresAt }, jwtSecret, {
       subject: String(userId),
-      expiresIn: Math.floor((expiresAt - Date.now()) / 1000),
     });
   }
 

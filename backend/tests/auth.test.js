@@ -1,3 +1,4 @@
+const jwt = require('jsonwebtoken');
 const { api, prisma, resetDatabase, signUp, registerDevice, linkDevice, publish } = require('./helpers');
 
 beforeEach(resetDatabase);
@@ -70,6 +71,14 @@ describe('sessions', () => {
 
   test('a request without a token returns 401', async () => {
     await api().get('/api/v1/devices').expect(401);
+  });
+
+  test('the token and its session end at exactly the same time', async () => {
+    const user = await signUp();
+    const payload = jwt.decode(user.token);
+    const session = await prisma.session.findUnique({ where: { id: payload.sid } });
+    expect(session.expires_at.getTime()).toBe(payload.exp * 1000);
+    expect(payload.exp - payload.iat).toBe(24 * 60 * 60);
   });
 });
 
