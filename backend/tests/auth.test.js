@@ -12,6 +12,25 @@ describe('sign-up and sign-in', () => {
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
+  test('rejects a password longer than 72 bytes even when it has fewer than 72 characters', async () => {
+    const password = 'ك'.repeat(37);
+    expect(password.length).toBe(37);
+    const res = await api()
+      .post('/api/v1/auth/register')
+      .send({ name: 'A', email: 'a@test.local', password })
+      .expect(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  test('accepts a password of exactly 72 bytes', async () => {
+    const password = 'ك'.repeat(36);
+    expect(Buffer.byteLength(password, 'utf8')).toBe(72);
+    await api()
+      .post('/api/v1/auth/register')
+      .send({ name: 'A', email: 'a@test.local', password })
+      .expect(201);
+  });
+
   test('rejects the same email twice, whatever the letter case', async () => {
     const body = { name: 'A', email: 'same@test.local', password: 'password123' };
     await api().post('/api/v1/auth/register').send(body).expect(201);

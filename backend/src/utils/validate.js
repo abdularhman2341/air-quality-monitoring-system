@@ -28,8 +28,8 @@ function requirePassword(value) {
   if (typeof value !== 'string' || value.length < 8) {
     throw invalid('password must be at least 8 characters.');
   }
-  if (value.length > 72) {
-    throw invalid('password must be at most 72 characters.');
+  if (Buffer.byteLength(value, 'utf8') > 72) {
+    throw invalid('password must be at most 72 bytes. Arabic letters use 2 bytes each and emoji use 4.');
   }
   return value;
 }
