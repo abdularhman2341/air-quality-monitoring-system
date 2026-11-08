@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop]
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: aqms
+          POSTGRES_PASSWORD: aqms_ci_password
+          POSTGRES_DB: aqms_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U aqms"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://aqms:aqms_ci_password@localhost:5432/aqms_test
+      TEST_DATABASE_URL: postgresql://aqms:aqms_ci_password@localhost:5432/aqms_test
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma migrate deploy
+      - run: npm test
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  firmware:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ESP32_CORE: esp32:esp32@3.3.12
+      ESP32_INDEX: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+      - run: arduino-cli core update-index --additional-urls "$ESP32_INDEX"
+      - run: arduino-cli core install "$ESP32_CORE" --additional-urls "$ESP32_INDEX"
+      - run: arduino-cli lib install "WiFiManager@2.0.17" "Async TCP@3.5.0"
+      - run: arduino-cli lib install --git-url https://github.com/bertmelis/espMqttClient.git#v1.7.3
+        env:
+          ARDUINO_LIBRARY_ENABLE_UNSAFE_INSTALL: "true"
+      - run: cp firmware/gas_monitor/config.example.h firmware/gas_monitor/config.h
+      - run: arduino-cli compile --fqbn esp32:esp32:esp32 --warnings default firmware/gas_monitor
+
+  broker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck mosquitto/docker-entrypoint.sh
