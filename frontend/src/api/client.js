@@ -84,6 +84,8 @@ export const api = {
   register: (name, email, password) => request('/auth/register', { method: 'POST', body: { name, email, password } }),
   login: (email, password) => request('/auth/login', { method: 'POST', body: { email, password } }),
   logout: () => request('/auth/logout', { method: 'POST' }),
+  logoutAll: (currentPassword) =>
+    request('/auth/logout-all', { method: 'POST', body: { current_password: currentPassword } }),
   me: () => request('/auth/me'),
   updateMe: (data) => request('/auth/me', { method: 'PATCH', body: data }),
   changeEmail: (email, currentPassword) =>

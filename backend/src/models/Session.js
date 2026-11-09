@@ -37,6 +37,13 @@ class Session extends BaseModel {
       data: { revoked_at: new Date() },
     });
   }
+
+  static async revokeAll(userId) {
+    await prisma.session.updateMany({
+      where: { user_id: Number(userId), revoked_at: null },
+      data: { revoked_at: new Date() },
+    });
+  }
 }
 
 module.exports = Session;

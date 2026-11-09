@@ -5,7 +5,12 @@ const API_URL = import.meta.env.VITE_API_URL
 const LIVE_EVENTS = ['reading:new', 'alert:new', 'device:status']
 
 let socket = null
+let onServerDisconnect = null
 const listeners = new Set()
+
+export function setServerDisconnectHandler (handler) {
+  onServerDisconnect = handler
+}
 
 // Socket.IO runs on the server root, not under /api/v1.
 // A relative API_URL means the backend serves the site from the same domain.
@@ -21,10 +26,19 @@ export function connectSocket () {
   if (socket) {
     return
   }
-  socket = io(socketUrl(), { auth: (send) => send({ token: getToken() }) })
-  LIVE_EVENTS.forEach((event) => socket.on(event, notifyListeners))
+  const current = io(socketUrl(), { auth: (send) => send({ token: getToken() }) })
+  socket = current
+  LIVE_EVENTS.forEach((event) => current.on(event, notifyListeners))
   // Also fires after a reconnect, so anything missed offline is reloaded.
-  socket.on('connect', notifyListeners)
+  current.on('connect', notifyListeners)
+  // The server closed the connection (session ended or signed out everywhere).
+  // Socket.IO does not reconnect by itself in this case.
+  current.on('disconnect', (reason) => {
+    if (reason === 'io server disconnect' && socket === current) {
+      socket = null
+      if (onServerDisconnect) onServerDisconnect()
+    }
+  })
 }
 
 export function disconnectSocket () {

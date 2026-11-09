@@ -215,6 +215,41 @@ paths:
           description: Signed out
         '401': { $ref: '#/components/responses/Unauthorized' }
 
+  /auth/logout-all:
+    post:
+      tags: [Auth]
+      summary: Sign out of all devices and start a new session here
+      description: >
+        Needs the current password. Ends every session of the user, including this one,
+        because a copied token has the same session id. Closes the user's live connections,
+        then returns a new token for this device.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password]
+              properties:
+                current_password: { type: string, maxLength: 72, example: password123 }
+      responses:
+        '200':
+          description: All sessions ended. The new token replaces the old one on this device.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: WRONG_PASSWORD (403, not 401, because the session is still valid)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
   /devices:
     get:
       tags: [Devices]
