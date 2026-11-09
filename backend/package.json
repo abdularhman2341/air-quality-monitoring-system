@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "migrate": "prisma migrate deploy",
     "seed:devices": "node src/scripts/seedDevices.js",
+    "make-admin": "node src/scripts/makeAdmin.js",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",

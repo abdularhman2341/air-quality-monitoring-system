@@ -25,6 +25,16 @@ enum ConnectionState {
   @@map("connection_state")
 }
 
+// What an account may do. Admins reach the admin routes under /api/v1/admin.
+// Named user_role in the database: "role" is also a PostgreSQL concept
+// (database roles), so the explicit name avoids confusion.
+enum Role {
+  user
+  admin
+
+  @@map("user_role")
+}
+
 // One account per person. Passwords are stored only as hashes.
 // Emails are stored in lowercase (the backend lowercases them before saving),
 // so @unique also blocks the same email with different letter case.
@@ -33,10 +43,12 @@ model User {
   name          String   @db.VarChar(100)
   email         String   @unique @db.VarChar(255)
   password_hash String
+  role          Role     @default(user)
   created_at    DateTime @default(now()) @db.Timestamptz(6)
 
-  devices  Device[]
-  sessions Session[]
+  devices      Device[]
+  sessions     Session[]
+  adminActions AdminAction[]
 
   @@map("users")
 }
@@ -119,4 +131,24 @@ model Alert {
 
   @@index([device_id, started_at])
   @@map("alerts")
+}
+
+// One row per change made by an admin (or by the make-admin script, where
+// admin_id is null). admin_email keeps who did it after that account is deleted,
+// and target_label keeps a readable name for the target (an email, a device name).
+model AdminAction {
+  id          Int      @id @default(autoincrement())
+  admin_id    Int?
+  admin_email String?  @db.VarChar(255)
+  action      String   @db.VarChar(50)
+  target_type String   @db.VarChar(20)
+  target_id   String   @db.VarChar(50)
+  target_label String? @db.VarChar(255)
+  details     Json?
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  admin User? @relation(fields: [admin_id], references: [id], onDelete: SetNull)
+
+  @@index([created_at])
+  @@map("admin_actions")
 }
