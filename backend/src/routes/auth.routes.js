@@ -11,5 +11,6 @@ router.patch('/me', requireAuth, authController.updateMe);
 router.patch('/me/email', requireAuth, authController.changeEmail);
 router.delete('/me', requireAuth, authController.deleteMe);
 router.post('/logout', requireAuth, authController.logout);
+router.post('/logout-all', requireAuth, authController.logoutAll);
 
 module.exports = router;

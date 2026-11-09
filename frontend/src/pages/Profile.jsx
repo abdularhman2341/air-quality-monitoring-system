@@ -67,6 +67,74 @@ function ChangeEmailForm({ onDone }) {
   )
 }
 
+// Ends every session of this account, including any copied token, and keeps
+// this device signed in with a new token.
+function LogoutAll() {
+  const { logoutAll } = useAuth()
+  const { t, errorText } = useLanguage()
+  const showToast = useToast()
+  const [open, setOpen] = useState(false)
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  function close() {
+    setOpen(false)
+    setPassword('')
+    setError(null)
+    setSaving(false)
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setError(null)
+    setSaving(true)
+    try {
+      await logoutAll(password)
+      close()
+      showToast(t('profile.logoutAllDone'))
+    } catch (err) {
+      setError(err)
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="profile-section">
+      <h2>{t('profile.logoutAllTitle')}</h2>
+      <p>{t('profile.logoutAllBody')}</p>
+      {!open ? (
+        <button type="button" className="btn btn-outline" onClick={() => setOpen(true)}>
+          {t('profile.logoutAll')}
+        </button>
+      ) : (
+        <form className="form profile-subform" onSubmit={handleSubmit}>
+          <label className="field">
+            {t('profile.currentPassword')}
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+              autoFocus
+            />
+          </label>
+          {error && <p className="form-error" role="alert">{errorText(error)}</p>}
+          <div className="profile-actions profile-actions-end">
+            <button type="button" className="btn btn-outline" onClick={close}>
+              {t('profile.cancel')}
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={saving || !password}>
+              {saving ? t('profile.saving') : t('profile.logoutAllConfirm')}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  )
+}
+
 // Two steps: a button first, then the warning and the password. After the
 // account is deleted the session is cleared and the protected routes send
 // the user to /login.
@@ -207,6 +275,8 @@ function Profile() {
         </div>
         {editingEmail && <ChangeEmailForm onDone={() => setEditingEmail(false)} />}
       </div>
+
+      <LogoutAll />
 
       <DeleteAccount />
     </section>

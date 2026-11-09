@@ -52,6 +52,14 @@ class AuthService {
     await Session.revoke(sessionId);
   }
 
+  // Ends every session of the user, including this one (a copied token shares
+  // its session id), then starts a new session for this device.
+  async logoutAll(userId, password) {
+    await this.confirmPassword(userId, password);
+    await Session.revokeAll(userId);
+    return this.generateToken(userId);
+  }
+
   async getUser(userId) {
     const user = await User.findById(userId);
     if (!user) {

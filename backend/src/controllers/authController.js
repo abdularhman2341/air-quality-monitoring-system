@@ -25,6 +25,14 @@ async function logout(req, res) {
   res.status(204).end();
 }
 
+async function logoutAll(req, res) {
+  const body = req.body || {};
+  const currentPassword = requirePasswordInput(body.current_password, 'current_password');
+  const token = await authService.logoutAll(req.userId, currentPassword);
+  realtimeGateway.disconnectUser(req.userId);
+  res.json({ token });
+}
+
 async function me(req, res) {
   const user = await authService.getUser(req.userId);
   res.json(user);
@@ -53,4 +61,4 @@ async function deleteMe(req, res) {
   res.status(204).end();
 }
 
-module.exports = { register, login, logout, me, updateMe, changeEmail, deleteMe };
+module.exports = { register, login, logout, logoutAll, me, updateMe, changeEmail, deleteMe };

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { api, getToken, setToken, setUnauthorizedHandler, TOKEN_KEY } from '../api/client'
-import { connectSocket, disconnectSocket } from '../realtime/socketClient'
+import { connectSocket, disconnectSocket, setServerDisconnectHandler } from '../realtime/socketClient'
 
 const AuthContext = createContext(null)
 
@@ -16,6 +16,10 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     setUnauthorizedHandler(clearSession)
+    // A 401 here signs out through the handler above; a valid session reconnects.
+    setServerDisconnectHandler(() => {
+      api.me().then(() => connectSocket()).catch(() => {})
+    })
     if (!getToken()) {
       return
     }
@@ -46,12 +50,10 @@ export function AuthProvider({ children }) {
       if (!getToken()) clearSession()
       else window.location.reload()
     }
-    const timer = setInterval(checkToken, 1000)
     window.addEventListener('focus', checkToken)
     document.addEventListener('visibilitychange', onVisible)
     window.addEventListener('storage', onStorage)
     return () => {
-      clearInterval(timer)
       window.removeEventListener('focus', checkToken)
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('storage', onStorage)
@@ -82,6 +84,15 @@ export function AuthProvider({ children }) {
     clearSession()
   }
 
+  // No finally: if the request fails, the other devices are still signed in,
+  // so this one must not look signed out.
+  async function logoutAll(currentPassword) {
+    const { token } = await api.logoutAll(currentPassword)
+    setToken(token)
+    disconnectSocket()
+    connectSocket()
+  }
+
   async function logout() {
     try {
       await api.logout()
@@ -91,7 +102,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, updateProfile, changeEmail, deleteAccount, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, updateProfile, changeEmail, deleteAccount, logoutAll, logout }}>
       {children}
     </AuthContext.Provider>
   )

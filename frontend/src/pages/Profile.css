@@ -89,6 +89,18 @@
   height: 46px;
 }
 
+.profile-section h2 {
+  margin-bottom: 6px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.profile-section > p {
+  margin-bottom: 14px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
 .profile-subform {
   margin-top: 16px;
 }
