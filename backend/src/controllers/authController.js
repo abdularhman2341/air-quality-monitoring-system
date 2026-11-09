@@ -1,6 +1,6 @@
 const authService = require('../services/AuthService');
 const realtimeGateway = require('../services/RealtimeGateway');
-const { requireString, requireEmail, requirePassword } = require('../utils/validate');
+const { requireString, requireEmail, requirePassword, requirePasswordInput } = require('../utils/validate');
 
 async function register(req, res) {
   const body = req.body || {};
@@ -14,7 +14,7 @@ async function register(req, res) {
 async function login(req, res) {
   const body = req.body || {};
   const email = requireEmail(body.email);
-  const password = requireString(body.password, 'password', { max: 72 });
+  const password = requirePasswordInput(body.password, 'password');
   const { token, user } = await authService.login(email, password);
   res.json({ token, user });
 }
@@ -40,14 +40,14 @@ async function updateMe(req, res) {
 async function changeEmail(req, res) {
   const body = req.body || {};
   const email = requireEmail(body.email);
-  const currentPassword = requireString(body.current_password, 'current_password', { max: 72 });
+  const currentPassword = requirePasswordInput(body.current_password, 'current_password');
   const user = await authService.changeEmail(req.userId, email, currentPassword);
   res.json(user);
 }
 
 async function deleteMe(req, res) {
   const body = req.body || {};
-  const currentPassword = requireString(body.current_password, 'current_password', { max: 72 });
+  const currentPassword = requirePasswordInput(body.current_password, 'current_password');
   await authService.deleteAccount(req.userId, currentPassword);
   realtimeGateway.disconnectUser(req.userId);
   res.status(204).end();

@@ -58,7 +58,7 @@ paths:
               properties:
                 name: { type: string, maxLength: 100, example: Demo User }
                 email: { type: string, format: email, example: demo@aqms.com }
-                password: { type: string, minLength: 8, maxLength: 72, example: Demo12345 }
+                password: { type: string, minLength: 8, maxLength: 72, description: 'At most 72 bytes in UTF-8. Arabic letters use 2 bytes each and emoji use 4.', example: Demo12345 }
       responses:
         '201':
           description: Account created

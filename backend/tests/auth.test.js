@@ -1,3 +1,4 @@
+const jwt = require('jsonwebtoken');
 const { api, prisma, resetDatabase, signUp, registerDevice, linkDevice, publish } = require('./helpers');
 
 beforeEach(resetDatabase);
@@ -10,6 +11,25 @@ describe('sign-up and sign-in', () => {
       .send({ name: 'A', email: 'a@test.local', password: 'short' })
       .expect(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  test('rejects a password longer than 72 bytes even when it has fewer than 72 characters', async () => {
+    const password = 'ك'.repeat(37);
+    expect(password.length).toBe(37);
+    const res = await api()
+      .post('/api/v1/auth/register')
+      .send({ name: 'A', email: 'a@test.local', password })
+      .expect(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  test('accepts a password of exactly 72 bytes', async () => {
+    const password = 'ك'.repeat(36);
+    expect(Buffer.byteLength(password, 'utf8')).toBe(72);
+    await api()
+      .post('/api/v1/auth/register')
+      .send({ name: 'A', email: 'a@test.local', password })
+      .expect(201);
   });
 
   test('rejects the same email twice, whatever the letter case', async () => {
@@ -32,6 +52,13 @@ describe('sign-up and sign-in', () => {
     const user = await signUp();
     await api().post('/api/v1/auth/login').send({ email: user.email, password: 'wrong-password' }).expect(401);
   });
+
+  test('a password with spaces at the start or end is kept exactly as typed', async () => {
+    const password = ' secret123 ';
+    await api().post('/api/v1/auth/register').send({ name: 'A', email: 'a@test.local', password }).expect(201);
+    await api().post('/api/v1/auth/login').send({ email: 'a@test.local', password }).expect(200);
+    await api().post('/api/v1/auth/login').send({ email: 'a@test.local', password: 'secret123' }).expect(401);
+  });
 });
 
 describe('sessions', () => {
@@ -45,6 +72,14 @@ describe('sessions', () => {
   test('a request without a token returns 401', async () => {
     await api().get('/api/v1/devices').expect(401);
   });
+
+  test('the token and its session end at exactly the same time', async () => {
+    const user = await signUp();
+    const payload = jwt.decode(user.token);
+    const session = await prisma.session.findUnique({ where: { id: payload.sid } });
+    expect(session.expires_at.getTime()).toBe(payload.exp * 1000);
+    expect(payload.exp - payload.iat).toBe(24 * 60 * 60);
+  });
 });
 
 describe('account deletion', () => {
@@ -57,6 +92,17 @@ describe('account deletion', () => {
       .expect(403);
     expect(res.body.error.code).toBe('WRONG_PASSWORD');
     await api().get('/api/v1/auth/me').set(user.auth).expect(200);
+  });
+
+  test('accepts a current password with spaces at the start or end', async () => {
+    const password = ' secret123 ';
+    await api().post('/api/v1/auth/register').send({ name: 'A', email: 'a@test.local', password }).expect(201);
+    const login = await api().post('/api/v1/auth/login').send({ email: 'a@test.local', password }).expect(200);
+    await api()
+      .delete('/api/v1/auth/me')
+      .set({ Authorization: `Bearer ${login.body.token}` })
+      .send({ current_password: password })
+      .expect(204);
   });
 
   test('deletes the account, ends its sessions, and frees its devices with no old data', async () => {
