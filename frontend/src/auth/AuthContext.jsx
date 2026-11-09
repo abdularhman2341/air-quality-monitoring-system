@@ -46,10 +46,12 @@ export function AuthProvider({ children }) {
       if (!getToken()) clearSession()
       else window.location.reload()
     }
+    const timer = setInterval(checkToken, 1000)
     window.addEventListener('focus', checkToken)
     document.addEventListener('visibilitychange', onVisible)
     window.addEventListener('storage', onStorage)
     return () => {
+      clearInterval(timer)
       window.removeEventListener('focus', checkToken)
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('storage', onStorage)
