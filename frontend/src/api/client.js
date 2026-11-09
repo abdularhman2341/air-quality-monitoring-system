@@ -1,5 +1,5 @@
 const API_URL = import.meta.env.VITE_API_URL
-const TOKEN_KEY = 'aqms_token'
+export const TOKEN_KEY = 'aqms_token'
 
 export class ApiError extends Error {
   constructor (status, code, message) {
@@ -62,7 +62,7 @@ async function request (path, { method = 'GET', body } = {}) {
   const data = await res.json().catch(() => null)
   if (!res.ok) {
     const error = data?.error || {}
-    if (res.status === 401 && token) {
+    if (res.status === 401 && getToken() === token) {
       onUnauthorized()
     }
     throw new ApiError(res.status, error.code || 'UNKNOWN_ERROR', error.message || 'Something went wrong.')
