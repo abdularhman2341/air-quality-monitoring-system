@@ -16,6 +16,8 @@ tags:
   - name: Devices
   - name: Readings
   - name: Alerts
+  - name: Admin
+    description: Admin only. Every route needs a token of an account whose role is admin (403 ADMIN_ONLY otherwise). Every change is written to the admin log.
 
 paths:
   /health:
@@ -168,6 +170,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+        '409': { $ref: '#/components/responses/LastAdmin' }
 
   /auth/me/email:
     patch:
@@ -214,6 +217,41 @@ paths:
         '204':
           description: Signed out
         '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/logout-all:
+    post:
+      tags: [Auth]
+      summary: Sign out of all devices and start a new session here
+      description: >
+        Needs the current password. Ends every session of the user, including this one,
+        because a copied token has the same session id. Closes the user's live connections,
+        then returns a new token for this device.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password]
+              properties:
+                current_password: { type: string, maxLength: 72, example: password123 }
+      responses:
+        '200':
+          description: All sessions ended. The new token replaces the old one on this device.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: WRONG_PASSWORD (403, not 401, because the session is still valid)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 
   /devices:
     get:
@@ -473,6 +511,351 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
 
+  /admin/actions:
+    get:
+      tags: [Admin]
+      summary: The admin log, newest first
+      description: One row per change made by an admin. `admin` is null for changes made by the make-admin script.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/AdminLimit'
+      responses:
+        '200':
+          description: One page of log rows
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminActionPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/AdminOnly' }
+
+  /admin/users:
+    get:
+      tags: [Admin]
+      summary: List every account
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/AdminLimit'
+      responses:
+        '200':
+          description: One page of accounts, each with `device_count`
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUserPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/AdminOnly' }
+
+  /admin/users/{id}:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    get:
+      tags: [Admin]
+      summary: One account with its devices
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: The account and its devices
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/User' }
+                  devices:
+                    type: array
+                    items: { $ref: '#/components/schemas/Device' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/AdminOnly' }
+        '404': { $ref: '#/components/responses/UserNotFound' }
+    patch:
+      tags: [Admin]
+      summary: Edit the name, email or role of an account
+      description: Send at least one field. Changed fields are logged with their old values. Demoting the last admin returns 409 LAST_ADMIN.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 100, example: Sara }
+                email: { type: string, example: sara@aqms.com }
+                role: { type: string, enum: [user, admin] }
+      responses:
+        '200':
+          description: The updated account
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/AdminOnly' }
+        '404': { $ref: '#/components/responses/UserNotFound' }
+        '409':
+          description: EMAIL_TAKEN or LAST_ADMIN
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [Admin]
+      summary: Delete an account
+      description: Same as deleting your own account (devices released, history deleted, sessions deleted), and its live connections are closed. The log row keeps the name and email.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204':
+          description: Account deleted
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/AdminOnly' }
+        '404': { $ref: '#/components/responses/UserNotFound' }
+        '409': { $ref: '#/components/responses/LastAdmin' }
+
+  /admin/users/{id}/logout-all:
+    post:
+      tags: [Admin]
+      summary: Sign an account out of every device
+      description: Ends every session of the account and closes its live connections.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '204':
+          description: All sessions ended
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/AdminOnly' }
+        '404': { $ref: '#/components/responses/UserNotFound' }
+
+  /admin/devices:
+    get:
+      tags: [Admin]
+      summary: List every device with its owner
+      description: The search matches the MAC (with or without colons), the name, the location or the owner's email.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/AdminLimit'
+      responses:
+        '200':
+          description: One page of devices
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminDevicePage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/AdminOnly' }
+    post:
+      tags: [Admin]
+      summary: Register a new device
+      description: |
+        Creates the device row with a new pairing code. The code is returned only in this
+        response; the database keeps its bcrypt hash. The device's broker account in
+        Mosquitto is still added by hand.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mac_address]
+              properties:
+                mac_address: { type: string, example: 'A4:CF:12:3B:9E:01' }
+                name: { type: string, maxLength: 100, nullable: true }
+                location: { type: string, maxLength: 150, nullable: true }
+      responses:
+        '201':
+          description: Device registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  device: { $ref: '#/components/schemas/AdminDevice' }
+                  pairing_code: { type: string, example: K7QM-4XPB }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/AdminOnly' }
+        '409':
+          description: DEVICE_EXISTS
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /admin/devices/{mac}:
+    parameters:
+      - $ref: '#/components/parameters/Mac'
+    get:
+      tags: [Admin]
+      summary: One device with its owner
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: The device
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminDevice' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/AdminOnly' }
+        '404': { $ref: '#/components/responses/DeviceNotFound' }
+    patch:
+      tags: [Admin]
+      summary: Edit the name, location or owner of a device
+      description: A new owner (or `owner_id` null) deletes the device's readings and alerts, so nobody sees another owner's data.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 100, nullable: true }
+                location: { type: string, maxLength: 150, nullable: true }
+                owner_id: { type: string, nullable: true, example: '2' }
+      responses:
+        '200':
+          description: The updated device
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminDevice' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/AdminOnly' }
+        '404':
+          description: DEVICE_NOT_FOUND, or USER_NOT_FOUND for an owner that does not exist
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [Admin]
+      summary: Delete a device with its readings and alerts
+      description: The device must be registered again before anyone can link it. Its MQTT messages are dropped until then.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204':
+          description: Device deleted
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/AdminOnly' }
+        '404': { $ref: '#/components/responses/DeviceNotFound' }
+
+  /admin/devices/{mac}/pairing-code:
+    post:
+      tags: [Admin]
+      summary: Replace the pairing code of a device
+      description: The old code stops working. The new code is returned only in this response.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Mac'
+      responses:
+        '200':
+          description: The new code
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pairing_code: { type: string, example: K7QM-4XPB }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/AdminOnly' }
+        '404': { $ref: '#/components/responses/DeviceNotFound' }
+
+  /admin/devices/{mac}/readings:
+    get:
+      tags: [Admin]
+      summary: Readings of any device
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Mac'
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: One page of readings, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Reading' }
+                  page: { type: integer }
+                  limit: { type: integer }
+                  total: { type: integer }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/AdminOnly' }
+        '404': { $ref: '#/components/responses/DeviceNotFound' }
+
+  /admin/alerts:
+    get:
+      tags: [Admin]
+      summary: Alerts of every device, newest first
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [all, open], default: all }
+        - name: device_id
+          in: query
+          schema: { type: string, example: A4CF123B9E01 }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/AdminLimit'
+      responses:
+        '200':
+          description: One page of alerts, each with its device and owner
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/AdminAlert' }
+                  page: { type: integer }
+                  limit: { type: integer }
+                  total: { type: integer }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/AdminOnly' }
+
+  /admin/alerts/{id}/close:
+    post:
+      tags: [Admin]
+      summary: End an alert that is stuck open
+      description: For an alert whose `alarm_off` never arrived. The owner's dashboard gets the same `alert:new` event as a normal end.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 1 }
+      responses:
+        '200':
+          description: The ended alert
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Alert' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/AdminOnly' }
+        '404':
+          description: ALERT_NOT_FOUND
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: ALERT_ALREADY_CLOSED
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -499,6 +882,26 @@ components:
       name: limit
       in: query
       schema: { type: integer, minimum: 1, maximum: 1000, default: 100 }
+    AdminLimit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+    Search:
+      name: q
+      in: query
+      description: Text to search for (case does not matter)
+      schema: { type: string, maxLength: 100 }
+    UserId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, example: '1' }
+    Mac:
+      name: mac
+      in: path
+      required: true
+      description: With or without colons
+      schema: { type: string, example: A4CF123B9E01 }
 
   schemas:
     User:
@@ -507,7 +910,9 @@ components:
         id: { type: string, example: '1' }
         name: { type: string, example: Demo User }
         email: { type: string, example: demo@aqms.com }
+        role: { type: string, enum: [user, admin] }
         created_at: { type: string, format: date-time }
+        device_count: { type: integer, description: Only in the admin list }
 
     Device:
       type: object
@@ -560,6 +965,90 @@ components:
         limit: { type: integer, example: 100 }
         total: { type: integer, example: 2 }
 
+    AdminDevice:
+      allOf:
+        - $ref: '#/components/schemas/Device'
+        - type: object
+          properties:
+            owner:
+              type: object
+              nullable: true
+              properties:
+                id: { type: string }
+                name: { type: string }
+                email: { type: string }
+            online_since: { type: string, format: date-time, nullable: true }
+            created_at: { type: string, format: date-time }
+
+    AdminAlert:
+      allOf:
+        - $ref: '#/components/schemas/Alert'
+        - type: object
+          properties:
+            device:
+              type: object
+              properties:
+                name: { type: string, nullable: true }
+                location: { type: string, nullable: true }
+                owner:
+                  type: object
+                  nullable: true
+                  properties:
+                    id: { type: string }
+                    name: { type: string }
+                    email: { type: string }
+
+    AdminAction:
+      type: object
+      properties:
+        id: { type: integer }
+        admin:
+          type: object
+          nullable: true
+          description: Null for the make-admin script. id is null if that admin account was deleted.
+          properties:
+            id: { type: string, nullable: true }
+            email: { type: string }
+        action:
+          type: string
+          example: user.update
+          description: user.promote, user.update, user.delete, user.logout_all, device.create, device.update, device.delete, device.pairing_code, alert.close
+        target_type: { type: string, enum: [user, device, alert] }
+        target_id: { type: string }
+        target_label: { type: string, nullable: true, description: 'Readable name of the target when the row was written: the email of an account, the name of a device, the device of an alert' }
+        details: { type: object, nullable: true, description: 'Changed fields as { field: { from, to } }. An owner change is logged as owner: { from, to } with the emails.' }
+        created_at: { type: string, format: date-time }
+
+    AdminUserPage:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/User' }
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+
+    AdminDevicePage:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/AdminDevice' }
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+
+    AdminActionPage:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/AdminAction' }
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+
     Error:
       type: object
       properties:
@@ -577,6 +1066,26 @@ components:
           schema: { $ref: '#/components/schemas/Error' }
     Unauthorized:
       description: MISSING_TOKEN, INVALID_TOKEN, or SESSION_ENDED
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    AdminOnly:
+      description: ADMIN_ONLY (the account is not an admin)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    LastAdmin:
+      description: LAST_ADMIN (at least one admin must remain)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    UserNotFound:
+      description: USER_NOT_FOUND
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    DeviceNotFound:
+      description: DEVICE_NOT_FOUND
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
