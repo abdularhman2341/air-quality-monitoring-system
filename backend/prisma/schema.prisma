@@ -42,13 +42,15 @@ model User {
 }
 
 // Sign-in sessions. A session is valid until expires_at, unless revoked_at is set
-// (for example on logout). Sessions are deleted when their user is deleted.
+// (for example on logout) or it has not been used for SESSION_IDLE_MINUTES.
+// Sessions are deleted when their user is deleted.
 model Session {
-  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id    Int
-  created_at DateTime  @default(now()) @db.Timestamptz(6)
-  expires_at DateTime  @db.Timestamptz(6)
-  revoked_at DateTime? @db.Timestamptz(6)
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      Int
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  expires_at   DateTime  @db.Timestamptz(6)
+  revoked_at   DateTime? @db.Timestamptz(6)
+  last_used_at DateTime  @default(now()) @db.Timestamptz(6)
 
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
