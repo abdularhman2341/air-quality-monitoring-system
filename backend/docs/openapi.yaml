@@ -97,7 +97,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  token: { type: string, description: JWT valid for 24 hours }
+                  token: { type: string, description: "JWT valid for up to 24 hours. The session also ends after 15 minutes with no request (SESSION_IDLE_MINUTES)." }
                   user: { $ref: '#/components/schemas/User' }
         '400': { $ref: '#/components/responses/ValidationError' }
         '401':

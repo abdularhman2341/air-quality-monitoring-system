@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const HttpError = require('../errors/HttpError');
 const User = require('../models/User');
 const Session = require('../models/Session');
-const { jwtSecret, tokenExpiry } = require('../config/auth');
+const { jwtSecret, tokenExpiry, sessionIdleMinutes } = require('../config/auth');
 
 function unauthorized(code, message) {
   return new HttpError(401, code, message);
@@ -39,10 +39,12 @@ class AuthService {
     } catch (err) {
       throw unauthorized('INVALID_TOKEN', 'Your session is invalid or has expired. Please sign in again.');
     }
-    const session = await Session.findActive(payload.sid, payload.sub);
+    const usedSince = new Date(Date.now() - sessionIdleMinutes * 60 * 1000);
+    const session = await Session.findActive(payload.sid, payload.sub, usedSince);
     if (!session) {
       throw unauthorized('SESSION_ENDED', 'This session has ended. Please sign in again.');
     }
+    await Session.touch(session.id);
     return { userId: payload.sub, sessionId: session.id, expiresAt: payload.exp * 1000 };
   }
 
