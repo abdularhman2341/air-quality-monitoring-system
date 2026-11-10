@@ -6,6 +6,9 @@ const Alert = require('../models/Alert');
 const Reading = require('../models/Reading');
 const Session = require('../models/Session');
 const AdminAction = require('../models/AdminAction');
+const VerificationCode = require('../models/VerificationCode');
+const mailService = require('./MailService');
+const { passwordResetEmail } = require('../utils/emails');
 const realtimeGateway = require('./RealtimeGateway');
 
 class AdminService {
@@ -43,6 +46,20 @@ class AdminService {
     await Session.revokeAll(user.id);
     await AdminAction.log(prisma, admin, 'user.logout_all', user.logTarget());
     realtimeGateway.disconnectUser(String(user.id));
+  }
+
+  // The admin never sees or sets a password: the user gets a reset code by
+  // email and chooses the new password. The admin is told if the email fails.
+  async sendPasswordReset(userId, admin) {
+    const user = await this.getUser(userId);
+    const code = await VerificationCode.issue(user.id, 'reset_password', { force: true });
+    try {
+      await mailService.send({ to: user.email, ...passwordResetEmail(code, VerificationCode.CODE_MINUTES) });
+    } catch (err) {
+      console.error(`Mail not sent (admin password reset): ${err.message}`);
+      throw new HttpError(502, 'MAIL_NOT_SENT', 'The email could not be sent. Try again shortly.');
+    }
+    await AdminAction.log(prisma, admin, 'user.password_reset', user.logTarget());
   }
 
   async listDevices(query, page, limit) {

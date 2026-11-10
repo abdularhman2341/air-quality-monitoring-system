@@ -40,6 +40,7 @@ describe('every admin route', () => {
     ['patch', '/users/1'],
     ['delete', '/users/1'],
     ['post', '/users/1/logout-all'],
+    ['post', '/users/1/password-reset'],
     ['get', '/devices'],
     ['post', '/devices'],
     ['get', `/devices/${MAC}`],

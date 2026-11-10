@@ -44,6 +44,15 @@ function requirePasswordInput(value, field) {
   return value;
 }
 
+// A 6-digit code typed by the user. Spaces are ignored, so "123 456" works.
+function requireCode(value) {
+  const code = typeof value === 'string' ? value.replace(/\s/g, '') : '';
+  if (!/^\d{6}$/.test(code)) {
+    throw invalid('code must be 6 digits.');
+  }
+  return code;
+}
+
 function optionalString(value, field, max) {
   if (value === undefined || value === null || value === '') {
     return null;
@@ -77,5 +86,5 @@ function optionalInt(value, field, { min = 1, max, fallback }) {
 }
 
 module.exports = {
-  requireString, requireEmail, requirePassword, requirePasswordInput, optionalString, optionalDate, optionalInt, invalid,
+  requireString, requireEmail, requirePassword, requirePasswordInput, requireCode, optionalString, optionalDate, optionalInt, invalid,
 };

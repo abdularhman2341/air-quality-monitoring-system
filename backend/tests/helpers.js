@@ -7,7 +7,7 @@ const mqttSubscriber = require('../src/services/MqttSubscriberService');
 const api = () => request(app);
 
 async function resetDatabase() {
-  await prisma.$executeRawUnsafe('TRUNCATE admin_actions, alerts, readings, devices, sessions, users RESTART IDENTITY CASCADE');
+  await prisma.$executeRawUnsafe('TRUNCATE verification_codes, admin_actions, alerts, readings, devices, sessions, users RESTART IDENTITY CASCADE');
 }
 
 let userCount = 0;

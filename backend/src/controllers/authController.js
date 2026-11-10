@@ -1,6 +1,8 @@
 const authService = require('../services/AuthService');
 const realtimeGateway = require('../services/RealtimeGateway');
-const { requireString, requireEmail, requirePassword, requirePasswordInput } = require('../utils/validate');
+const {
+  requireString, requireEmail, requirePassword, requirePasswordInput, requireCode,
+} = require('../utils/validate');
 
 async function register(req, res) {
   const body = req.body || {};
@@ -53,6 +55,31 @@ async function changeEmail(req, res) {
   res.json(user);
 }
 
+async function changePassword(req, res) {
+  const body = req.body || {};
+  const currentPassword = requirePasswordInput(body.current_password, 'current_password');
+  const newPassword = requirePassword(body.new_password);
+  const token = await authService.changePassword(req.userId, currentPassword, newPassword);
+  realtimeGateway.disconnectUser(req.userId);
+  res.json({ token });
+}
+
+async function forgotPassword(req, res) {
+  const email = requireEmail((req.body || {}).email);
+  await authService.requestPasswordReset(email);
+  res.status(202).json({ message: 'If this email has an account, a code was sent to it.' });
+}
+
+async function resetPassword(req, res) {
+  const body = req.body || {};
+  const email = requireEmail(body.email);
+  const code = requireCode(body.code);
+  const newPassword = requirePassword(body.new_password);
+  const user = await authService.resetPassword(email, code, newPassword);
+  realtimeGateway.disconnectUser(String(user.id));
+  res.status(204).end();
+}
+
 async function deleteMe(req, res) {
   const body = req.body || {};
   const currentPassword = requirePasswordInput(body.current_password, 'current_password');
@@ -61,4 +88,6 @@ async function deleteMe(req, res) {
   res.status(204).end();
 }
 
-module.exports = { register, login, logout, logoutAll, me, updateMe, changeEmail, deleteMe };
+module.exports = {
+  register, login, logout, logoutAll, me, updateMe, changeEmail, changePassword, forgotPassword, resetPassword, deleteMe,
+};
