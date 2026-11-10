@@ -8,12 +8,18 @@ const routes = require('./routes');
 const notFound = require('./middlewares/notFound');
 const errorHandler = require('./middlewares/errorHandler');
 const { corsOrigins } = require('./config/cors');
+const { trustProxy } = require('./config/rateLimit');
 
 const openapi = YAML.parse(fs.readFileSync(path.join(__dirname, '..', 'docs', 'openapi.yaml'), 'utf8'));
 
 const frontendDist = process.env.FRONTEND_DIST;
 
 const app = express();
+
+// Makes req.ip the visitor's address instead of the proxy's (see config/rateLimit.js).
+if (trustProxy !== null) {
+  app.set('trust proxy', trustProxy);
+}
 
 if (corsOrigins.length > 0) {
   app.use(cors({ origin: corsOrigins }));

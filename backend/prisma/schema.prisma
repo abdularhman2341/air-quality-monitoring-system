@@ -41,6 +41,7 @@ enum Role {
 // email_verified_at is null until the user types the code sent to the email.
 // pending_email is a new address the user asked for: it becomes the email
 // only after the code sent to it is typed.
+// alert_emails: email the owner when one of their devices starts or ends an alarm.
 model User {
   id                Int       @id @default(autoincrement())
   name              String    @db.VarChar(100)
@@ -50,6 +51,7 @@ model User {
   created_at        DateTime  @default(now()) @db.Timestamptz(6)
   email_verified_at DateTime? @db.Timestamptz(6)
   pending_email     String?   @db.VarChar(255)
+  alert_emails      Boolean   @default(true)
 
   devices           Device[]
   sessions          Session[]
@@ -117,6 +119,8 @@ model Device {
   online_since      DateTime?       @db.Timestamptz(6)
   last_reading_at   DateTime?       @db.Timestamptz(6)
   created_at        DateTime        @default(now()) @db.Timestamptz(6)
+  // When the last "alarm started" email was sent, to send at most one every 10 minutes.
+  alert_email_at    DateTime?       @db.Timestamptz(6)
 
   owner    User?     @relation(fields: [owner_id], references: [id], onDelete: SetNull)
   readings Reading[]
@@ -160,6 +164,8 @@ model Alert {
   ended_at         DateTime? @db.Timestamptz(6)
   peak_lpg_ppm_est Float
   threshold_ppm    Float
+  // True when the "alarm started" email went out; only then is the end emailed too.
+  email_sent       Boolean   @default(false)
 
   device Device @relation(fields: [device_id], references: [device_id], onDelete: Cascade)
 
@@ -185,4 +191,18 @@ model AdminAction {
 
   @@index([created_at])
   @@map("admin_actions")
+}
+
+// One row per counted try (a failed sign-in, a password reset request...).
+// scope says what is counted and key for whom (an email or an address).
+// Rows older than a day are deleted when a new one is saved.
+model RateLimitHit {
+  id         Int      @id @default(autoincrement())
+  scope      String   @db.VarChar(30)
+  key        String   @db.VarChar(255)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([scope, key, created_at])
+  @@index([created_at])
+  @@map("rate_limit_hits")
 }

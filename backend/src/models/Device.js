@@ -21,7 +21,7 @@ const COLUMNS = {
 };
 
 // A device without an owner: it can be linked again with its pairing code.
-const RELEASED = { owner_id: null, name: null, location: null, last_reading_at: null };
+const RELEASED = { owner_id: null, name: null, location: null, last_reading_at: null, alert_email_at: null };
 
 const ADMIN_COLUMNS = { ...COLUMNS, owner: { select: { id: true, name: true, email: true } } };
 
@@ -49,6 +49,22 @@ class Device extends BaseModel {
       select: { owner_id: true },
     });
     return row ? row.owner_id : undefined;
+  }
+
+  // Marks that an alert email is being sent for this device and returns its
+  // name and location, or null when one was sent in the last `minutes`.
+  // One statement, so two alarms at the same moment cannot both pass.
+  static async claimAlertEmail(deviceId, minutes) {
+    const rows = await prisma.$queryRaw`
+      UPDATE devices SET alert_email_at = now()
+      WHERE device_id = ${deviceId}
+        AND (alert_email_at IS NULL OR alert_email_at < now() - make_interval(mins => ${minutes}::int))
+      RETURNING name, location`;
+    return rows.length ? rows[0] : null;
+  }
+
+  static async findLabel(deviceId) {
+    return prisma.device.findUnique({ where: { device_id: deviceId }, select: { name: true, location: true } });
   }
 
   static async withLatest(row) {

@@ -8,7 +8,7 @@ const mailService = require('../src/services/MailService');
 const api = () => request(app);
 
 async function resetDatabase() {
-  await prisma.$executeRawUnsafe('TRUNCATE verification_codes, admin_actions, alerts, readings, devices, sessions, users RESTART IDENTITY CASCADE');
+  await prisma.$executeRawUnsafe('TRUNCATE rate_limit_hits, verification_codes, admin_actions, alerts, readings, devices, sessions, users RESTART IDENTITY CASCADE');
 }
 
 let userCount = 0;

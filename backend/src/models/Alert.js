@@ -35,6 +35,15 @@ class Alert extends BaseModel {
     return new Alert(row);
   }
 
+  static async markEmailSent(id) {
+    await prisma.alert.update({ where: { id }, data: { email_sent: true } });
+  }
+
+  static async wasEmailed(id) {
+    const row = await prisma.alert.findUnique({ where: { id }, select: { email_sent: true } });
+    return Boolean(row && row.email_sent);
+  }
+
   async close(endedAt) {
     const row = await prisma.alert.update({
       where: { id: this.id },

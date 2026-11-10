@@ -55,10 +55,10 @@ class User extends BaseModel {
     return bcrypt.compare(password, this.password_hash);
   }
 
-  async updateProfile({ name }) {
+  async updateProfile({ name, alert_emails }) {
     const row = await prisma.user.update({
       where: { id: this.id },
-      data: { name },
+      data: { name, alert_emails },
     });
     Object.assign(this, row);
     return this;
@@ -203,6 +203,11 @@ class User extends BaseModel {
     return this.email_verified_at != null;
   }
 
+  // Alert emails go only to an address the owner proved is theirs.
+  wantsAlertEmails() {
+    return this.alert_emails && this.isEmailVerified();
+  }
+
   logTarget() {
     return { type: 'user', id: this.id, label: this.email };
   }
@@ -218,6 +223,7 @@ class User extends BaseModel {
       email: this.email,
       email_verified: this.isEmailVerified(),
       pending_email: this.pending_email ?? null,
+      alert_emails: this.alert_emails,
       role: this.role,
       created_at: this.created_at,
     };
