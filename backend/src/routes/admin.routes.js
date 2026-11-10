@@ -15,6 +15,7 @@ router.patch('/users/:id', adminController.updateUser);
 router.delete('/users/:id', adminController.deleteUser);
 router.post('/users/:id/logout-all', adminController.signOutUser);
 router.post('/users/:id/password-reset', adminController.sendPasswordReset);
+router.post('/users/:id/verify-email', adminController.verifyUserEmail);
 
 router.get('/devices', adminController.listDevices);
 router.post('/devices', adminController.registerDevice);

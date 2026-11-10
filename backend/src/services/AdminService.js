@@ -8,7 +8,7 @@ const Session = require('../models/Session');
 const AdminAction = require('../models/AdminAction');
 const VerificationCode = require('../models/VerificationCode');
 const mailService = require('./MailService');
-const { passwordResetEmail } = require('../utils/emails');
+const { passwordResetEmail, emailVerificationEmail, emailChangedEmail } = require('../utils/emails');
 const realtimeGateway = require('./RealtimeGateway');
 
 class AdminService {
@@ -30,9 +30,26 @@ class AdminService {
     return { user, devices };
   }
 
+  // When the email changes, the new address gets a verification code (the
+  // account is unverified until the user types it) and the old address is told.
   async updateUser(userId, changes, admin) {
     const user = await this.getUser(userId);
-    return user.adminUpdate(changes, admin);
+    const oldEmail = user.email;
+    await user.adminUpdate(changes, admin);
+    if (user.email !== oldEmail) {
+      const code = await VerificationCode.issue(user.id, 'verify_email', { force: true });
+      mailService.sendInBackground(user.email, emailVerificationEmail(code, VerificationCode.CODE_MINUTES), 'email verification code');
+      mailService.sendInBackground(oldEmail, emailChangedEmail(user.email), 'email changed notice');
+    }
+    return user;
+  }
+
+  async verifyUserEmail(userId, admin) {
+    const user = await this.getUser(userId);
+    if (user.isEmailVerified()) {
+      throw new HttpError(409, 'EMAIL_ALREADY_VERIFIED', 'This email is already verified.');
+    }
+    return user.adminVerifyEmail(admin);
   }
 
   async deleteUser(userId, admin) {
