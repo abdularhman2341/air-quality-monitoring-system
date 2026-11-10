@@ -24,6 +24,7 @@ function Header() {
         <NavLink to="/" end className="nav-link">{t('header.dashboard')}</NavLink>
         <NavLink to="/add-sensor" className="nav-link">{t('header.sensors')}</NavLink>
         <NavLink to="/history" className="nav-link">{t('header.history')}</NavLink>
+        {user.role === 'admin' && <NavLink to="/admin" className="nav-link">{t('header.admin')}</NavLink>}
       </nav>
 
       <div className="header-actions">
