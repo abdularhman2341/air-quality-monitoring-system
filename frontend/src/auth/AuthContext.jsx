@@ -81,6 +81,21 @@ export function AuthProvider({ children }) {
     setUser(await api.changeEmail(email, currentPassword))
   }
 
+  // The server keeps the old email and returns the account with pending_email
+  // set. The email changes only in confirmEmailChange(), with the code that
+  // was sent to the new address.
+  async function confirmEmailChange(code) {
+    setUser(await api.confirmEmailChange(code))
+  }
+
+  async function cancelEmailChange() {
+    setUser(await api.cancelEmailChange())
+  }
+
+  async function verifyEmail(code) {
+    setUser(await api.verifyEmail(code))
+  }
+
   async function deleteAccount(currentPassword) {
     await api.deleteAccount(currentPassword)
     clearSession()
@@ -123,7 +138,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, updateProfile, changeEmail, deleteAccount, logoutAll, changePassword, refreshUser, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, updateProfile, changeEmail, confirmEmailChange, cancelEmailChange, verifyEmail, deleteAccount, logoutAll, changePassword, refreshUser, logout }}>
       {children}
     </AuthContext.Provider>
   )

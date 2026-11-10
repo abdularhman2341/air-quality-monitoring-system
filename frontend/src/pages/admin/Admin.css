@@ -267,3 +267,9 @@
 .admin > .form-error {
   margin-bottom: 12px;
 }
+
+.admin-unverified {
+  margin-inline-start: 8px;
+  padding: 2px 8px;
+  font-size: 11px;
+}

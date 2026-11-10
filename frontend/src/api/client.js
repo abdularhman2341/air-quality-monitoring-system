@@ -98,6 +98,11 @@ export const api = {
   updateMe: (data) => request('/auth/me', { method: 'PATCH', body: data }),
   changeEmail: (email, currentPassword) =>
     request('/auth/me/email', { method: 'PATCH', body: { email, current_password: currentPassword } }),
+  confirmEmailChange: (code) => request('/auth/me/email/confirm', { method: 'POST', body: { code } }),
+  resendEmailChange: () => request('/auth/me/email/resend', { method: 'POST' }),
+  cancelEmailChange: () => request('/auth/me/email/pending', { method: 'DELETE' }),
+  verifyEmail: (code) => request('/auth/verify-email', { method: 'POST', body: { code } }),
+  resendVerification: () => request('/auth/verify-email/resend', { method: 'POST' }),
   deleteAccount: (currentPassword) =>
     request('/auth/me', { method: 'DELETE', body: { current_password: currentPassword } }),
   listDevices: () => request('/devices'),
@@ -114,6 +119,7 @@ export const api = {
     deleteUser: (id) => request(`/admin/users/${id}`, { method: 'DELETE' }),
     logoutUser: (id) => request(`/admin/users/${id}/logout-all`, { method: 'POST' }),
     sendPasswordReset: (id) => request(`/admin/users/${id}/password-reset`, { method: 'POST' }),
+    verifyUserEmail: (id) => request(`/admin/users/${id}/verify-email`, { method: 'POST' }),
     devices: (params) => request(`/admin/devices?${query(params)}`),
     registerDevice: (device) => request('/admin/devices', { method: 'POST', body: device }),
     updateDevice: (mac, data) => request(`/admin/devices/${mac}`, { method: 'PATCH', body: data }),
