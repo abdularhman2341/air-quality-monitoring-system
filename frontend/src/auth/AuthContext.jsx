@@ -53,7 +53,9 @@ export function AuthProvider({ children }) {
     window.addEventListener('focus', checkToken)
     document.addEventListener('visibilitychange', onVisible)
     window.addEventListener('storage', onStorage)
+    const timer = setInterval(checkToken, 1000)
     return () => {
+      clearInterval(timer)
       window.removeEventListener('focus', checkToken)
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('storage', onStorage)
