@@ -110,6 +110,19 @@ describe('asking for a reset code', () => {
     await api().post(`${AUTH}/forgot-password`).send({ email: user.email }).expect(202);
   });
 
+  test('a failed email is logged without the code', async () => {
+    const user = await signUp();
+    const logged = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const send = jest.spyOn(mailService, 'send').mockRejectedValue(new Error('provider down'));
+    await api().post(`${AUTH}/forgot-password`).send({ email: user.email }).expect(202);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const code = codeIn(send.mock.calls[0][0]);
+    const lines = logged.mock.calls.map((call) => call.join(' ')).join('\n');
+    expect(lines).toContain('Mail not sent (password reset code): provider down');
+    expect(lines).not.toContain(code);
+  });
+
   test('needs a valid email', async () => {
     const res = await api().post(`${AUTH}/forgot-password`).send({ email: 'not-an-email' }).expect(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
