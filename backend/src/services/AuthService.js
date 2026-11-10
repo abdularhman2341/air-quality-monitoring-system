@@ -3,6 +3,8 @@ const HttpError = require('../errors/HttpError');
 const User = require('../models/User');
 const Session = require('../models/Session');
 const VerificationCode = require('../models/VerificationCode');
+const RateLimit = require('../models/RateLimit');
+const limits = require('../config/rateLimit');
 const prisma = require('../db/prisma');
 const mailService = require('./MailService');
 const {
@@ -16,6 +18,10 @@ function unauthorized(code, message) {
 
 function invalidCode() {
   return new HttpError(400, 'INVALID_CODE', 'The code is wrong or has expired. Ask for a new one.');
+}
+
+function tooManyAttempts() {
+  return new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait 15 minutes and try again.');
 }
 
 function codeRecentlySent() {
@@ -33,12 +39,28 @@ class AuthService {
     return user;
   }
 
-  async login(email, password) {
+  // Every try is counted before the password is looked at, for the address
+  // (when known) and for the email, and a try that signs in is taken back.
+  // After 5 wrong tries for an email or 20 from an address in 15 minutes the
+  // answer is 429 even for the right password, so guessing gains nothing.
+  // An email with no account is counted the same way, so the answer does not
+  // show who is registered.
+  async login(email, password, ip = null) {
+    const addressHit = ip ? await RateLimit.take('login_address', ip, limits.loginPerAddress, limits.windowMinutes) : undefined;
+    if (addressHit === null) {
+      throw tooManyAttempts();
+    }
+    const emailHit = await RateLimit.take('login_email', email, limits.loginPerEmail, limits.windowMinutes);
+    if (emailHit === null) {
+      throw tooManyAttempts();
+    }
     const user = await User.findByEmail(email);
     const valid = user ? await user.checkPassword(password) : false;
     if (!valid) {
       throw unauthorized('INVALID_CREDENTIALS', 'Email or password is incorrect.');
     }
+    await RateLimit.release(addressHit);
+    await RateLimit.clear('login_email', email);
     const token = await this.generateToken(user.id);
     return { token, user };
   }
@@ -234,20 +256,36 @@ class AuthService {
 
   // Always finishes the same way, whether or not the email has an account,
   // so the answer cannot be used to find out who is registered.
-  async requestPasswordReset(email) {
+  // An address can ask 10 times in 15 minutes (429 after that: it says
+  // nothing about any account). An email gets at most 3 codes in 15 minutes;
+  // past that nothing is sent and the answer stays the same.
+  async requestPasswordReset(email, ip = null) {
+    if (ip && (await RateLimit.take('reset_request_address', ip, limits.resetRequestsPerAddress, limits.windowMinutes)) === null) {
+      throw tooManyAttempts();
+    }
     const user = await User.findByEmail(email);
     if (!user) {
+      return;
+    }
+    const emailHit = await RateLimit.take('reset_request_email', email, limits.resetRequestsPerEmail, limits.windowMinutes);
+    if (emailHit === null) {
       return;
     }
     const code = await VerificationCode.issue(user.id, 'reset_password');
     if (code) {
       this.sendInBackground(user.email, passwordResetEmail(code, VerificationCode.CODE_MINUTES), 'password reset code');
+    } else {
+      await RateLimit.release(emailHit);
     }
   }
 
   // One answer for every failure (no account, no code, expired, too many
   // tries, wrong code). A wrong try is saved even though nothing else changes.
-  async resetPassword(email, code, newPassword) {
+  async resetPassword(email, code, newPassword, ip = null) {
+    const addressHit = ip ? await RateLimit.take('reset_try_address', ip, limits.resetTriesPerAddress, limits.windowMinutes) : undefined;
+    if (addressHit === null) {
+      throw tooManyAttempts();
+    }
     const user = await User.findByEmail(email);
     const done = user
       ? await prisma.$transaction(async (tx) => {
@@ -266,6 +304,10 @@ class AuthService {
     if (!done) {
       throw invalidCode();
     }
+    // The owner proved the email is theirs: a sign-in lock that someone else
+    // caused by guessing must not keep them out.
+    await RateLimit.release(addressHit);
+    await RateLimit.clear('login_email', user.email);
     this.sendInBackground(user.email, passwordChangedEmail(), 'password changed notice');
     return user;
   }

@@ -1,8 +1,13 @@
 const authService = require('../services/AuthService');
 const realtimeGateway = require('../services/RealtimeGateway');
+const { trustProxy } = require('../config/rateLimit');
 const {
-  requireString, requireEmail, requirePassword, requirePasswordInput, requireCode,
+  requireString, requireEmail, requirePassword, requirePasswordInput, requireCode, invalid,
 } = require('../utils/validate');
+
+// The visitor's address for the limits per address, or null when the server
+// cannot tell visitors apart (TRUST_PROXY is not set).
+const clientIp = (req) => (trustProxy === null ? null : req.ip || null);
 
 async function register(req, res) {
   const body = req.body || {};
@@ -17,7 +22,7 @@ async function login(req, res) {
   const body = req.body || {};
   const email = requireEmail(body.email);
   const password = requirePasswordInput(body.password, 'password');
-  const { token, user } = await authService.login(email, password);
+  const { token, user } = await authService.login(email, password, clientIp(req));
   res.json({ token, user });
 }
 
@@ -42,8 +47,20 @@ async function me(req, res) {
 
 async function updateMe(req, res) {
   const body = req.body || {};
-  const name = requireString(body.name, 'name', { max: 100 });
-  const user = await authService.updateProfile(req.userId, { name });
+  const changes = {};
+  if (body.name !== undefined) {
+    changes.name = requireString(body.name, 'name', { max: 100 });
+  }
+  if (body.alert_emails !== undefined) {
+    if (typeof body.alert_emails !== 'boolean') {
+      throw invalid('alert_emails must be true or false.');
+    }
+    changes.alert_emails = body.alert_emails;
+  }
+  if (Object.keys(changes).length === 0) {
+    throw invalid('Send name or alert_emails to update.');
+  }
+  const user = await authService.updateProfile(req.userId, changes);
   res.json(user);
 }
 
@@ -93,7 +110,7 @@ async function changePassword(req, res) {
 
 async function forgotPassword(req, res) {
   const email = requireEmail((req.body || {}).email);
-  await authService.requestPasswordReset(email);
+  await authService.requestPasswordReset(email, clientIp(req));
   res.status(202).json({ message: 'If this email has an account, a code was sent to it.' });
 }
 
@@ -102,7 +119,7 @@ async function resetPassword(req, res) {
   const email = requireEmail(body.email);
   const code = requireCode(body.code);
   const newPassword = requirePassword(body.new_password);
-  const user = await authService.resetPassword(email, code, newPassword);
+  const user = await authService.resetPassword(email, code, newPassword, clientIp(req));
   realtimeGateway.disconnectUser(String(user.id));
   res.status(204).end();
 }
