@@ -104,10 +104,11 @@ class AuthService {
 
   // Emails are sent after the response, so a slow mail provider does not slow
   // the request down, and the response time does not show whether the email
-  // belongs to an account. A failure is logged without the message itself.
-  sendInBackground(to, email) {
+  // belongs to an account. A failure is logged with a fixed label, never the
+  // subject or the text: the subject of a reset email contains the code.
+  sendInBackground(to, email, label) {
     mailService.send({ to, ...email }).catch((err) => {
-      console.error(`Mail not sent (${email.subject}): ${err.message}`);
+      console.error(`Mail not sent (${label}): ${err.message}`);
     });
   }
 
@@ -120,7 +121,7 @@ class AuthService {
     }
     const code = await VerificationCode.issue(user.id, 'reset_password');
     if (code) {
-      this.sendInBackground(user.email, passwordResetEmail(code, VerificationCode.CODE_MINUTES));
+      this.sendInBackground(user.email, passwordResetEmail(code, VerificationCode.CODE_MINUTES), 'password reset code');
     }
   }
 
@@ -141,7 +142,7 @@ class AuthService {
     if (!done) {
       throw new HttpError(400, 'INVALID_CODE', 'The code is wrong or has expired. Ask for a new one.');
     }
-    this.sendInBackground(user.email, passwordChangedEmail());
+    this.sendInBackground(user.email, passwordChangedEmail(), 'password changed notice');
     return user;
   }
 
@@ -154,7 +155,7 @@ class AuthService {
       await Session.revokeAll(user.id, tx);
       await tx.verificationCode.deleteMany({ where: { user_id: user.id, purpose: 'reset_password' } });
     });
-    this.sendInBackground(user.email, passwordChangedEmail());
+    this.sendInBackground(user.email, passwordChangedEmail(), 'password changed notice');
     return this.generateToken(user.id);
   }
 
