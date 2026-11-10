@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 
 function Login() {
-  const [email, setEmail] = useState('')
+  const location = useLocation()
+  const passwordReset = Boolean(location.state?.passwordReset)
+  const [email, setEmail] = useState(location.state?.email || '')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -27,6 +29,7 @@ function Login() {
     <>
       <h2>{t('login.title')}</h2>
       <p className="subtitle">{t('login.subtitle')}</p>
+      {passwordReset && <p className="form-success" role="status">{t('login.passwordReset')}</p>}
       <form className="form" onSubmit={handleSubmit}>
         <label className="field">
           {t('login.email')}
@@ -49,6 +52,7 @@ function Login() {
             required
           />
         </label>
+        <Link className="auth-forgot" to="/forgot-password">{t('login.forgot')}</Link>
         {error && <p className="form-error" role="alert">{errorText(error)}</p>}
         <button type="submit" className="btn btn-primary" disabled={submitting}>
           {submitting ? t('login.submitting') : t('login.submit')}

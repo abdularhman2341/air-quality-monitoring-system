@@ -189,6 +189,15 @@
   white-space: normal;
 }
 
+.admin-confirm-neutral {
+  border-color: var(--border-strong);
+  background: var(--surface-muted);
+}
+
+.admin-confirm-neutral p {
+  color: var(--text-secondary);
+}
+
 .admin-confirm-actions {
   display: flex;
   flex-wrap: wrap;

@@ -306,6 +306,35 @@ select {
   color: var(--danger-ink);
 }
 
+.form-success {
+  padding: 10px 12px;
+  border: 1px solid var(--safe-border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  background: var(--safe-bg);
+  color: var(--safe-ink);
+}
+
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 500;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.link-button:hover {
+  text-decoration: underline;
+}
+
+.link-button:disabled {
+  color: var(--text-faint);
+  cursor: default;
+  text-decoration: none;
+}
+
 .page-loading {
   padding: 48px 16px;
   text-align: center;
