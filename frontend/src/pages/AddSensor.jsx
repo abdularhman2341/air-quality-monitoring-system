@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
+import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 import { useToast } from '../toast/ToastContext'
 import './AddSensor.css'
@@ -100,6 +101,7 @@ function AddSensor() {
   const navigate = useNavigate()
   const showToast = useToast()
   const { t, errorText } = useLanguage()
+  const { user } = useAuth()
 
   function validate() {
     if (cleanMac(macAddress).length !== 12) {
@@ -145,6 +147,7 @@ function AddSensor() {
       <div className="card add-sensor-card">
         <h1>{t('addSensor.title')}</h1>
         <p className="subtitle">{t('addSensor.hint')}</p>
+        {user.email_verified === false && <p className="notice-warn" role="status">{t('addSensor.verifyFirst')}</p>}
         <form className="form" onSubmit={handleSubmit} noValidate>
           <label className="field">
             {t('addSensor.mac')}
@@ -193,7 +196,7 @@ function AddSensor() {
           {error && <p className="form-error" role="alert">{error}</p>}
           <div className="form-actions">
             <Link to="/" className="btn btn-outline">{t('addSensor.cancel')}</Link>
-            <button type="submit" className="btn btn-primary" disabled={submitting}>
+            <button type="submit" className="btn btn-primary" disabled={submitting || user.email_verified === false}>
               {submitting ? t('addSensor.submitting') : t('addSensor.submit')}
             </button>
           </div>

@@ -15,6 +15,9 @@
   --offline-bg: #f3f4f6;
   --offline-border: #e5e7eb;
   --offline-ink: #6b7280;
+  --warn-bg: #fffbeb;
+  --warn-border: #fde68a;
+  --warn-ink: #92400e;
 
   --text-strong: #111827;
   --text: #1f2937;
@@ -220,6 +223,12 @@ select {
   color: var(--text-secondary);
 }
 
+.chip-warn {
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+  box-shadow: inset 0 0 0 1px var(--warn-border);
+}
+
 .toast {
   position: fixed;
   bottom: 24px;
@@ -313,6 +322,16 @@ select {
   font-size: 14px;
   background: var(--safe-bg);
   color: var(--safe-ink);
+}
+
+.notice-warn {
+  padding: 10px 12px;
+  border: 1px solid var(--warn-border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  line-height: 1.6;
+  background: var(--warn-bg);
+  color: var(--warn-ink);
 }
 
 .link-button {

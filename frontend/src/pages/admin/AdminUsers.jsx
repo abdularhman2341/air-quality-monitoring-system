@@ -69,6 +69,7 @@ function UserPanel({ user, onChanged }) {
         <label className="field">
           {t('admin.users.email')}
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} dir="ltr" />
+          {email.trim().toLowerCase() !== user.email && <span className="field-hint">{t('admin.users.emailHint')}</span>}
         </label>
         <label className="field">
           {t('admin.users.role')}
@@ -118,6 +119,19 @@ function UserPanel({ user, onChanged }) {
           onConfirm={() => run(() => api.admin.sendPasswordReset(user.id), t('admin.users.resetSent', { name: user.name }))}
         />
       )}
+      {confirming === 'verify' && (
+        <ConfirmBox
+          message={t('admin.users.confirmVerify', { email: user.email })}
+          confirmLabel={t('admin.users.markVerified')}
+          neutral
+          busy={busy}
+          onCancel={() => setConfirming(null)}
+          onConfirm={() => run(async () => {
+            await api.admin.verifyUserEmail(user.id)
+            if (isMe) await refreshUser()
+          }, t('admin.users.verified', { name: user.name }))}
+        />
+      )}
       {confirming === 'delete' && (
         <ConfirmBox
           message={t(isMe ? 'admin.users.confirmDeleteSelf' : 'admin.users.confirmDelete', { name: user.name })}
@@ -129,6 +143,11 @@ function UserPanel({ user, onChanged }) {
       )}
       {!confirming && (
         <div className="admin-danger-actions">
+          {user.email_verified === false && (
+            <button type="button" className="btn btn-outline" onClick={() => setConfirming('verify')}>
+              {t('admin.users.markVerified')}
+            </button>
+          )}
           <button type="button" className="btn btn-outline" onClick={() => setConfirming('reset')}>
             {t('admin.users.sendReset')}
           </button>
@@ -216,7 +235,10 @@ function UserRow({ user, isMe, open, onToggle, onChanged, locale }) {
           {user.name}
           {isMe && <span className="admin-you">{t('admin.you')}</span>}
         </td>
-        <td className="muted" dir="ltr">{user.email}</td>
+        <td className="muted">
+          <span dir="ltr">{user.email}</span>
+          {user.email_verified === false && <span className="chip chip-warn admin-unverified">{t('admin.users.unverified')}</span>}
+        </td>
         <td>
           <span className={`chip ${user.role === 'admin' ? 'chip-safe' : 'chip-neutral'}`}>{t(`admin.role.${user.role}`)}</span>
         </td>

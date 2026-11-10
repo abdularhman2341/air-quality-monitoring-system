@@ -133,3 +133,37 @@
 .danger-zone .btn {
   height: 44px;
 }
+
+.pending-email {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--warn-border);
+  border-radius: var(--radius);
+  background: var(--warn-bg);
+}
+
+.pending-email-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  color: var(--text-strong);
+  overflow-wrap: anywhere;
+}
+
+.pending-email > p {
+  margin: 8px 0 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.pending-email .form-error {
+  margin-top: 10px;
+}
+
+.pending-email-cancel {
+  margin-top: 12px;
+  font-size: 14px;
+}

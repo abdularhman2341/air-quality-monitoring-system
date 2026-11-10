@@ -1,0 +1,53 @@
+.code-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+}
+
+.code-form-input {
+  width: 8.2em;
+  height: 42px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 18px;
+  letter-spacing: 0.28em;
+  text-align: center;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.code-form-input::placeholder {
+  color: var(--text-faint);
+}
+
+.code-form-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-ring);
+}
+
+.code-form-input[aria-invalid='true'] {
+  border-color: var(--danger-ink);
+}
+
+.code-form-wait {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.code-form .link-button {
+  font-size: 14px;
+}
+
+.code-form-message {
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.code-form-error {
+  color: var(--danger-ink);
+}

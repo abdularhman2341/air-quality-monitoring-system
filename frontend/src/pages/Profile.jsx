@@ -4,12 +4,16 @@ import { useLanguage } from '../i18n/LanguageContext'
 import { useToast } from '../toast/ToastContext'
 import { formatDate } from '../utils/format'
 import { passwordErrorKey } from '../utils/password'
+import { api } from '../api/client'
+import EmailCodeForm from '../components/EmailCodeForm'
 import './Profile.css'
 
 // New email + current password. The server answers 403 WRONG_PASSWORD
 // (not 401), so a typo does not sign the user out.
+// The email does not change here: the server sends a code to the new address
+// and PendingEmail below asks for it.
 function ChangeEmailForm({ onDone }) {
-  const { changeEmail } = useAuth()
+  const { user, changeEmail } = useAuth()
   const { t, errorText } = useLanguage()
   const showToast = useToast()
   const [email, setEmail] = useState('')
@@ -20,10 +24,14 @@ function ChangeEmailForm({ onDone }) {
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
+    if (email.trim().toLowerCase() === user.email) {
+      setError({ code: 'SAME_EMAIL', message: t('profile.sameEmail') })
+      return
+    }
     setSaving(true)
     try {
       await changeEmail(email.trim(), password)
-      showToast(t('profile.emailChanged'))
+      showToast(t('profile.emailCodeSent'))
       onDone()
     } catch (err) {
       setError(err)
@@ -65,6 +73,50 @@ function ChangeEmailForm({ onDone }) {
         </button>
       </div>
     </form>
+  )
+}
+
+// A new email that is waiting for its code. The account keeps the old email
+// until the code is typed, so a wrong address cannot lock the user out.
+function PendingEmail() {
+  const { user, confirmEmailChange, cancelEmailChange } = useAuth()
+  const { t, errorText } = useLanguage()
+  const showToast = useToast()
+  const [error, setError] = useState(null)
+
+  async function confirm(code) {
+    await confirmEmailChange(code)
+    showToast(t('profile.emailChanged'))
+  }
+
+  async function cancel() {
+    setError(null)
+    try {
+      await cancelEmailChange()
+      showToast(t('profile.changeCancelled'))
+    } catch (err) {
+      setError(err)
+    }
+  }
+
+  return (
+    <div className="pending-email">
+      <div className="pending-email-head">
+        <span className="chip chip-warn">{t('profile.pendingTitle')}</span>
+        <bdi dir="ltr">{user.pending_email}</bdi>
+      </div>
+      <p>{t('profile.pendingBody')}</p>
+      <EmailCodeForm
+        inputId="change-email-code"
+        submitLabel={t('profile.confirmEmail')}
+        onSubmit={confirm}
+        onResend={() => api.resendEmailChange()}
+      />
+      {error && <p className="form-error" role="alert">{errorText(error)}</p>}
+      <button type="button" className="link-button pending-email-cancel" onClick={cancel}>
+        {t('profile.cancelChange')}
+      </button>
+    </div>
   )
 }
 
@@ -374,7 +426,7 @@ function Profile() {
           {t('profile.email')}
           <div className="email-row">
             <div className="readonly-value" dir="ltr">{user.email}</div>
-            {!editingEmail && (
+            {!editingEmail && !user.pending_email && (
               <button type="button" className="btn btn-outline" onClick={() => setEditingEmail(true)}>
                 {t('profile.changeEmail')}
               </button>
@@ -382,6 +434,7 @@ function Profile() {
           </div>
         </div>
         {editingEmail && <ChangeEmailForm onDone={() => setEditingEmail(false)} />}
+        {!editingEmail && user.pending_email && <PendingEmail />}
       </div>
 
       <ChangePassword />
