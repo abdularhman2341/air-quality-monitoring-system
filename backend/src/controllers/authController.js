@@ -55,6 +55,33 @@ async function changeEmail(req, res) {
   res.json(user);
 }
 
+async function verifyEmail(req, res) {
+  const code = requireCode((req.body || {}).code);
+  const user = await authService.verifyEmail(req.userId, code);
+  res.json(user);
+}
+
+async function resendVerification(req, res) {
+  await authService.resendVerification(req.userId);
+  res.status(204).end();
+}
+
+async function confirmEmailChange(req, res) {
+  const code = requireCode((req.body || {}).code);
+  const user = await authService.confirmEmailChange(req.userId, code);
+  res.json(user);
+}
+
+async function resendEmailChange(req, res) {
+  await authService.resendEmailChange(req.userId);
+  res.status(204).end();
+}
+
+async function cancelEmailChange(req, res) {
+  const user = await authService.cancelEmailChange(req.userId);
+  res.json(user);
+}
+
 async function changePassword(req, res) {
   const body = req.body || {};
   const currentPassword = requirePasswordInput(body.current_password, 'current_password');
@@ -90,4 +117,5 @@ async function deleteMe(req, res) {
 
 module.exports = {
   register, login, logout, logoutAll, me, updateMe, changeEmail, changePassword, forgotPassword, resetPassword, deleteMe,
+  verifyEmail, resendVerification, confirmEmailChange, resendEmailChange, cancelEmailChange,
 };

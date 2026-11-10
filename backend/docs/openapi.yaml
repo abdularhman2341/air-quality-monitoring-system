@@ -50,6 +50,10 @@ paths:
     post:
       tags: [Auth]
       summary: Create an account
+      description: >
+        The account works at once. A 6-digit code is emailed to verify the address
+        (`POST /auth/verify-email`); until then `email_verified` is false and the
+        account cannot link a device.
       requestBody:
         required: true
         content:
@@ -175,8 +179,13 @@ paths:
   /auth/me/email:
     patch:
       tags: [Auth]
-      summary: Change my email
-      description: Needs the current password. The email is saved in lowercase. Existing sessions stay valid.
+      summary: Ask to change my email
+      description: >
+        Needs the current password. The email does not change yet: the new address
+        is saved as `pending_email` (in lowercase) and a 6-digit code is emailed to
+        it. `POST /auth/me/email/confirm` with that code makes it the email. Sending
+        the current email cancels a waiting change. A second request within a minute
+        returns 429, so a code can never confirm an address it was not sent to.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -190,7 +199,7 @@ paths:
                 current_password: { type: string, maxLength: 72, example: password123 }
       responses:
         '200':
-          description: The updated user
+          description: The user, with the same email and pending_email set
           content:
             application/json:
               schema: { $ref: '#/components/schemas/User' }
@@ -206,6 +215,122 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/CodeRecentlySent' }
+        '502': { $ref: '#/components/responses/MailNotSent' }
+
+  /auth/me/email/confirm:
+    post:
+      tags: [Auth]
+      summary: Confirm my new email with the code
+      description: >
+        Makes `pending_email` the email and marks it verified. The old address gets
+        a notice. Existing sessions stay valid. Same code rules as password reset
+        (15 minutes, 5 tries, works once).
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, example: '482913' }
+      responses:
+        '200':
+          description: The user with the new email
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400':
+          description: VALIDATION_ERROR, or INVALID_CODE (wrong, expired, too many tries, or no change is waiting)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: EMAIL_TAKEN (another account took the address while the code was waiting)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/me/email/resend:
+    post:
+      tags: [Auth]
+      summary: Send a new code to my pending email
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204':
+          description: A new code was sent. The old one no longer works.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: NO_PENDING_EMAIL
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/CodeRecentlySent' }
+        '502': { $ref: '#/components/responses/MailNotSent' }
+
+  /auth/me/email/pending:
+    delete:
+      tags: [Auth]
+      summary: Cancel my waiting email change
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: The user with pending_email cleared
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/verify-email:
+    post:
+      tags: [Auth]
+      summary: Verify my email with the code
+      description: >
+        The code is emailed when the account is created. Same code rules as password
+        reset (15 minutes, 5 tries, works once). An account that is already verified
+        gets 200 without the code being checked.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, example: '482913' }
+      responses:
+        '200':
+          description: The user, with email_verified true
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400':
+          description: VALIDATION_ERROR or INVALID_CODE
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/verify-email/resend:
+    post:
+      tags: [Auth]
+      summary: Send me a new verification code
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204':
+          description: A new code was sent. The old one no longer works.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: EMAIL_ALREADY_VERIFIED
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/CodeRecentlySent' }
+        '502': { $ref: '#/components/responses/MailNotSent' }
 
   /auth/me/password:
     patch:
@@ -364,6 +489,7 @@ paths:
     post:
       tags: [Devices]
       summary: Link a device with its pairing code
+      description: Needs a verified email (403 EMAIL_NOT_VERIFIED otherwise).
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -385,6 +511,11 @@ paths:
               schema: { $ref: '#/components/schemas/Device' }
         '400': { $ref: '#/components/responses/ValidationError' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: EMAIL_NOT_VERIFIED (verify the email first; checked before the pairing code)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '404':
           description: DEVICE_NOT_FOUND (wrong MAC or pairing code)
           content:
@@ -666,7 +797,11 @@ paths:
     patch:
       tags: [Admin]
       summary: Edit the name, email or role of an account
-      description: Send at least one field. Changed fields are logged with their old values. Demoting the last admin returns 409 LAST_ADMIN.
+      description: >
+        Send at least one field. Changed fields are logged with their old values.
+        Demoting the last admin returns 409 LAST_ADMIN. A new email starts as not
+        verified: a verification code is emailed to it, the old address gets a
+        notice, and any email change the user was waiting on is dropped.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -740,6 +875,29 @@ paths:
         '404': { $ref: '#/components/responses/UserNotFound' }
         '502':
           description: MAIL_NOT_SENT (the mail provider refused or did not answer)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /admin/users/{id}/verify-email:
+    post:
+      tags: [Admin]
+      summary: Mark an account's email as verified
+      description: For an account that cannot receive the code. No code is involved. Logged as user.verify_email.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: The account, with email_verified true
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/AdminOnly' }
+        '404': { $ref: '#/components/responses/UserNotFound' }
+        '409':
+          description: EMAIL_ALREADY_VERIFIED
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -1027,6 +1185,8 @@ components:
         id: { type: string, example: '1' }
         name: { type: string, example: Demo User }
         email: { type: string, example: demo@aqms.com }
+        email_verified: { type: boolean, description: False until the code sent to the email is typed. Needed to link a device. }
+        pending_email: { type: string, nullable: true, description: A new email waiting for its code }
         role: { type: string, enum: [user, admin] }
         created_at: { type: string, format: date-time }
         device_count: { type: integer, description: Only in the admin list }
@@ -1176,6 +1336,16 @@ components:
             message: { type: string, example: email is required. }
 
   responses:
+    CodeRecentlySent:
+      description: CODE_RECENTLY_SENT (a code was sent less than a minute ago)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    MailNotSent:
+      description: MAIL_NOT_SENT (the mail provider refused or did not answer)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
     ValidationError:
       description: VALIDATION_ERROR or INVALID_MAC
       content:

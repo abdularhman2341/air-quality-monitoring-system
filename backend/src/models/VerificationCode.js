@@ -21,11 +21,11 @@ class VerificationCode {
   // Saves a new code for this user and purpose and returns it. It replaces
   // any older code. Returns null when a code was sent less than a minute ago
   // (force skips that wait). One statement, so two requests at the same moment
-  // cannot both get a code.
-  static async issue(userId, purpose, { force = false } = {}) {
+  // cannot both get a code. db is prisma or a transaction.
+  static async issue(userId, purpose, { force = false, db = prisma } = {}) {
     const code = newCode();
     const hash = hashCode(userId, purpose, code);
-    const rows = await prisma.$queryRaw`
+    const rows = await db.$queryRaw`
       INSERT INTO verification_codes (user_id, purpose, code_hash, expires_at)
       VALUES (${Number(userId)}, ${purpose}::code_purpose, ${hash}, now() + make_interval(mins => ${CODE_MINUTES}::int))
       ON CONFLICT (user_id, purpose) DO UPDATE
@@ -55,6 +55,10 @@ class VerificationCode {
     }
     await tx.verificationCode.delete({ where: { id: rows[0].id } });
     return true;
+  }
+
+  static async discard(userId, purposes, db = prisma) {
+    await db.verificationCode.deleteMany({ where: { user_id: Number(userId), purpose: { in: purposes } } });
   }
 }
 

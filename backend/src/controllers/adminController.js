@@ -84,6 +84,11 @@ async function sendPasswordReset(req, res) {
   res.status(204).end();
 }
 
+async function verifyUserEmail(req, res) {
+  const user = await adminService.verifyUserEmail(userId(req), req.admin);
+  res.json(user);
+}
+
 async function listDevices(req, res) {
   const { page, limit } = readPage(req.query);
   const { data, total } = await adminService.listDevices(readSearch(req.query), page, limit);
@@ -176,6 +181,7 @@ module.exports = {
   deleteUser,
   signOutUser,
   sendPasswordReset,
+  verifyUserEmail,
   listDevices,
   getDevice,
   registerDevice,

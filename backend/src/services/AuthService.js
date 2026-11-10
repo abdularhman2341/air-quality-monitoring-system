@@ -5,16 +5,32 @@ const Session = require('../models/Session');
 const VerificationCode = require('../models/VerificationCode');
 const prisma = require('../db/prisma');
 const mailService = require('./MailService');
-const { passwordResetEmail, passwordChangedEmail } = require('../utils/emails');
+const {
+  passwordResetEmail, passwordChangedEmail, emailVerificationEmail, emailChangeEmail, emailChangedEmail,
+} = require('../utils/emails');
 const { jwtSecret, tokenExpiry, sessionIdleMinutes } = require('../config/auth');
 
 function unauthorized(code, message) {
   return new HttpError(401, code, message);
 }
 
+function invalidCode() {
+  return new HttpError(400, 'INVALID_CODE', 'The code is wrong or has expired. Ask for a new one.');
+}
+
+function codeRecentlySent() {
+  return new HttpError(429, 'CODE_RECENTLY_SENT', 'A code was sent less than a minute ago. Wait a moment before asking again.');
+}
+
 class AuthService {
+  // The account works at once. The code sent here only unlocks linking a
+  // device, so a failed email must not fail the sign-up: the user can ask
+  // for a new code from the banner.
   async register(name, email, password) {
-    return User.register(name, email, password);
+    const user = await User.register(name, email, password);
+    const code = await VerificationCode.issue(user.id, 'verify_email');
+    this.sendInBackground(user.email, emailVerificationEmail(code, VerificationCode.CODE_MINUTES), 'email verification code');
+    return user;
   }
 
   async login(email, password) {
@@ -89,12 +105,105 @@ class AuthService {
     return user;
   }
 
+  async verifyEmail(userId, code) {
+    const user = await this.getUser(userId);
+    if (user.isEmailVerified()) {
+      return user;
+    }
+    const done = await prisma.$transaction(async (tx) => {
+      if (!(await VerificationCode.consume(tx, user.id, 'verify_email', code))) {
+        return false;
+      }
+      await user.markEmailVerified(tx);
+      return true;
+    });
+    if (!done) {
+      throw invalidCode();
+    }
+    return user;
+  }
+
+  async resendVerification(userId) {
+    const user = await this.getUser(userId);
+    if (user.isEmailVerified()) {
+      throw new HttpError(409, 'EMAIL_ALREADY_VERIFIED', 'This email is already verified.');
+    }
+    const code = await VerificationCode.issue(user.id, 'verify_email');
+    if (!code) {
+      throw codeRecentlySent();
+    }
+    await this.sendCodeNow(user, 'verify_email', user.email, emailVerificationEmail(code, VerificationCode.CODE_MINUTES), 'email verification code');
+  }
+
+  // The email does not change here. The new address is kept as pending_email
+  // and gets a code; confirmEmailChange() makes it the email. Without that
+  // step, anyone who knows the password could move the account to an address
+  // they do not own, or one typed wrong.
+  // The code and the pending address are saved together, and a second address
+  // within a minute is refused: a code must never confirm an address other
+  // than the one it was sent to.
   async changeEmail(userId, email, currentPassword) {
     const user = await this.confirmPassword(userId, currentPassword);
     if (email === user.email) {
-      return user;
+      return user.setPendingEmail(null);
     }
-    return user.changeEmail(email);
+    if (await User.findByEmail(email)) {
+      throw new HttpError(409, 'EMAIL_TAKEN', 'An account with this email already exists.');
+    }
+    const code = await prisma.$transaction(async (tx) => {
+      const issued = await VerificationCode.issue(user.id, 'change_email', { db: tx });
+      if (!issued) {
+        throw codeRecentlySent();
+      }
+      await user.setPendingEmail(email, tx);
+      return issued;
+    });
+    try {
+      await this.sendCodeNow(user, 'change_email', email, emailChangeEmail(code, VerificationCode.CODE_MINUTES), 'email change code');
+    } catch (err) {
+      await user.setPendingEmail(null);
+      throw err;
+    }
+    return user;
+  }
+
+  async confirmEmailChange(userId, code) {
+    const user = await this.getUser(userId);
+    const oldEmail = user.email;
+    const done = user.pending_email
+      ? await prisma.$transaction(async (tx) => {
+        if (!(await VerificationCode.consume(tx, user.id, 'change_email', code))) {
+          return false;
+        }
+        await user.applyPendingEmail(tx);
+        return true;
+      })
+      : false;
+    if (!done) {
+      throw invalidCode();
+    }
+    this.sendInBackground(oldEmail, emailChangedEmail(user.email), 'email changed notice');
+    return user;
+  }
+
+  async resendEmailChange(userId) {
+    const user = await this.getUser(userId);
+    if (!user.pending_email) {
+      throw new HttpError(409, 'NO_PENDING_EMAIL', 'No email change is waiting for a code.');
+    }
+    const code = await VerificationCode.issue(user.id, 'change_email');
+    if (!code) {
+      throw codeRecentlySent();
+    }
+    await this.sendCodeNow(user, 'change_email', user.pending_email, emailChangeEmail(code, VerificationCode.CODE_MINUTES), 'email change code');
+  }
+
+  // The code row stays, so asking for another address still waits a minute.
+  // The code itself is useless: confirm needs a pending address, and the next
+  // request replaces the code.
+  async cancelEmailChange(userId) {
+    const user = await this.getUser(userId);
+    return user.setPendingEmail(null);
   }
 
   async deleteAccount(userId, currentPassword) {
@@ -107,9 +216,20 @@ class AuthService {
   // belongs to an account. A failure is logged with a fixed label, never the
   // subject or the text: the subject of a reset email contains the code.
   sendInBackground(to, email, label) {
-    mailService.send({ to, ...email }).catch((err) => {
+    mailService.sendInBackground(to, email, label);
+  }
+
+  // For a code the user is waiting for on the screen: they are told when the
+  // email could not be sent. The unsent code is deleted, so they can try
+  // again at once instead of waiting a minute for nothing. Same log rule.
+  async sendCodeNow(user, purpose, to, email, label) {
+    try {
+      await mailService.send({ to, ...email });
+    } catch (err) {
       console.error(`Mail not sent (${label}): ${err.message}`);
-    });
+      await VerificationCode.discard(user.id, [purpose]);
+      throw new HttpError(502, 'MAIL_NOT_SENT', 'The email could not be sent. Try again shortly.');
+    }
   }
 
   // Always finishes the same way, whether or not the email has an account,
@@ -136,11 +256,15 @@ class AuthService {
         }
         await user.setPassword(newPassword, tx);
         await Session.revokeAll(user.id, tx);
+        // The code arrived at this email, so the email is proven too.
+        if (!user.isEmailVerified()) {
+          await user.markEmailVerified(tx);
+        }
         return true;
       })
       : false;
     if (!done) {
-      throw new HttpError(400, 'INVALID_CODE', 'The code is wrong or has expired. Ask for a new one.');
+      throw invalidCode();
     }
     this.sendInBackground(user.email, passwordChangedEmail(), 'password changed notice');
     return user;

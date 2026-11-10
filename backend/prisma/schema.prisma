@@ -38,13 +38,18 @@ enum Role {
 // One account per person. Passwords are stored only as hashes.
 // Emails are stored in lowercase (the backend lowercases them before saving),
 // so @unique also blocks the same email with different letter case.
+// email_verified_at is null until the user types the code sent to the email.
+// pending_email is a new address the user asked for: it becomes the email
+// only after the code sent to it is typed.
 model User {
-  id            Int      @id @default(autoincrement())
-  name          String   @db.VarChar(100)
-  email         String   @unique @db.VarChar(255)
-  password_hash String
-  role          Role     @default(user)
-  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  id                Int       @id @default(autoincrement())
+  name              String    @db.VarChar(100)
+  email             String    @unique @db.VarChar(255)
+  password_hash     String
+  role              Role      @default(user)
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  email_verified_at DateTime? @db.Timestamptz(6)
+  pending_email     String?   @db.VarChar(255)
 
   devices           Device[]
   sessions          Session[]

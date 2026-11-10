@@ -23,6 +23,15 @@ class MailService {
     return this.printToConsole(message);
   }
 
+  // Sends without making the caller wait. A failure is logged with a fixed
+  // label, never the subject or the text: emails with a code have the code
+  // in both.
+  sendInBackground(to, email, label) {
+    this.send({ to, ...email }).catch((err) => {
+      console.error(`Mail not sent (${label}): ${err.message}`);
+    });
+  }
+
   printToConsole(message) {
     console.log(`MAIL to ${message.to}: ${message.subject}\n${message.text}`);
     return { id: null };

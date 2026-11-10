@@ -64,12 +64,29 @@ class User extends BaseModel {
     return this;
   }
 
-  async changeEmail(email) {
+  // db is prisma or a transaction in the three methods below.
+  async markEmailVerified(db = prisma) {
+    const row = await db.user.update({ where: { id: this.id }, data: { email_verified_at: new Date() } });
+    await db.verificationCode.deleteMany({ where: { user_id: this.id, purpose: 'verify_email' } });
+    Object.assign(this, row);
+    return this;
+  }
+
+  async setPendingEmail(email, db = prisma) {
+    const row = await db.user.update({ where: { id: this.id }, data: { pending_email: email } });
+    Object.assign(this, row);
+    return this;
+  }
+
+  // The user typed the code sent to pending_email, so that address is theirs:
+  // it becomes the email and counts as verified.
+  async applyPendingEmail(db = prisma) {
     try {
-      const row = await prisma.user.update({
+      const row = await db.user.update({
         where: { id: this.id },
-        data: { email },
+        data: { email: this.pending_email, pending_email: null, email_verified_at: new Date() },
       });
+      await db.verificationCode.deleteMany({ where: { user_id: this.id, purpose: 'verify_email' } });
       Object.assign(this, row);
       return this;
     } catch (err) {
@@ -118,6 +135,8 @@ class User extends BaseModel {
 
   // Admin edit of name, email and role. Only fields that really change are
   // saved, and they are logged with their old values in the same transaction.
+  // A new email was not proven by anyone, so the account goes back to
+  // unverified and any waiting code or email change is dropped.
   async adminUpdate(changes, admin) {
     const diff = {};
     for (const [field, value] of Object.entries(changes)) {
@@ -129,6 +148,10 @@ class User extends BaseModel {
       return this;
     }
     const data = Object.fromEntries(Object.entries(diff).map(([field, change]) => [field, change.to]));
+    if (data.email) {
+      data.email_verified_at = null;
+      data.pending_email = null;
+    }
     const target = this.logTarget();
     try {
       await prisma.$transaction(async (tx) => {
@@ -136,6 +159,9 @@ class User extends BaseModel {
           await User.ensureAnotherAdmin(tx, this.id);
         }
         const row = await tx.user.update({ where: { id: this.id }, data });
+        if (data.email) {
+          await tx.verificationCode.deleteMany({ where: { user_id: this.id, purpose: { in: ['verify_email', 'change_email'] } } });
+        }
         await AdminAction.log(tx, admin, 'user.update', target, diff);
         Object.assign(this, row);
       });
@@ -164,6 +190,19 @@ class User extends BaseModel {
     });
   }
 
+  // An admin vouches for the email without a code. Logged in the same transaction.
+  async adminVerifyEmail(admin) {
+    await prisma.$transaction(async (tx) => {
+      await this.markEmailVerified(tx);
+      await AdminAction.log(tx, admin, 'user.verify_email', this.logTarget());
+    });
+    return this;
+  }
+
+  isEmailVerified() {
+    return this.email_verified_at != null;
+  }
+
   logTarget() {
     return { type: 'user', id: this.id, label: this.email };
   }
@@ -173,7 +212,15 @@ class User extends BaseModel {
   }
 
   toJSON() {
-    const json = { id: String(this.id), name: this.name, email: this.email, role: this.role, created_at: this.created_at };
+    const json = {
+      id: String(this.id),
+      name: this.name,
+      email: this.email,
+      email_verified: this.isEmailVerified(),
+      pending_email: this.pending_email ?? null,
+      role: this.role,
+      created_at: this.created_at,
+    };
     if (this._count) {
       json.device_count = this._count.devices;
     }
