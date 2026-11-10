@@ -1,3 +1,5 @@
+const crypto = require('crypto');
+
 const secret = process.env.JWT_SECRET;
 
 if (!secret) {
@@ -15,4 +17,5 @@ module.exports = {
   tokenExpiry: process.env.JWT_EXPIRES_IN || '24h',
   sessionIdleMinutes,
   bcryptRounds: 10,
+  codeSecret: crypto.createHmac('sha256', secret).update('aqms-verification-codes').digest(),
 };

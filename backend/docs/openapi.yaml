@@ -207,6 +207,100 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
 
+  /auth/me/password:
+    patch:
+      tags: [Auth]
+      summary: Change my password
+      description: >
+        Needs the current password. Ends every session of the user, including this one,
+        closes the live connections, then returns a new token for this device. Cancels a
+        reset code that was waiting, and sends a "password changed" email.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password: { type: string, maxLength: 72, example: password123 }
+                new_password: { type: string, minLength: 8, maxLength: 72, example: new-password-456 }
+      responses:
+        '200':
+          description: Password changed. The new token replaces the old one on this device.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: WRONG_PASSWORD (403, not 401, because the session is still valid)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Ask for a password reset code by email
+      description: >
+        Sends a 6-digit code to the email if it has an account. The answer is the same
+        when it does not, so it cannot be used to find out who is registered. The code
+        works once, expires after 15 minutes, and stops working after 5 wrong tries.
+        A new code is sent at most once a minute and replaces the old one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email, example: demo@aqms.com }
+      responses:
+        '202':
+          description: Accepted, whether or not the email has an account
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        '400': { $ref: '#/components/responses/ValidationError' }
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Set a new password with the emailed code
+      description: >
+        Ends every session of the account and sends a "password changed" email.
+        The user then signs in with the new password.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code, new_password]
+              properties:
+                email: { type: string, format: email, example: demo@aqms.com }
+                code: { type: string, example: "482913", description: 6 digits. Spaces are ignored. }
+                new_password: { type: string, minLength: 8, maxLength: 72, example: new-password-456 }
+      responses:
+        '204':
+          description: Password changed
+        '400':
+          description: >
+            VALIDATION_ERROR, or INVALID_CODE (one answer for a wrong, used or expired code,
+            too many tries, and an email with no account)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
   /auth/logout:
     post:
       tags: [Auth]
@@ -626,6 +720,29 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/AdminOnly' }
         '404': { $ref: '#/components/responses/UserNotFound' }
+
+  /admin/users/{id}/password-reset:
+    post:
+      tags: [Admin]
+      summary: Email an account a password reset code
+      description: >
+        The admin never sees or sets a password. The user gets a reset code by email
+        (the same as /auth/forgot-password, without the one-minute wait) and chooses
+        the new password. Existing sessions stay valid until the password is changed.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '204':
+          description: The email was sent
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/AdminOnly' }
+        '404': { $ref: '#/components/responses/UserNotFound' }
+        '502':
+          description: MAIL_NOT_SENT (the mail provider refused or did not answer)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 
   /admin/devices:
     get:

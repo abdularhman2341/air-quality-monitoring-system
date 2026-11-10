@@ -46,9 +46,10 @@ model User {
   role          Role     @default(user)
   created_at    DateTime @default(now()) @db.Timestamptz(6)
 
-  devices      Device[]
-  sessions     Session[]
-  adminActions AdminAction[]
+  devices           Device[]
+  sessions          Session[]
+  adminActions      AdminAction[]
+  verificationCodes VerificationCode[]
 
   @@map("users")
 }
@@ -68,6 +69,34 @@ model Session {
 
   @@index([user_id])
   @@map("sessions")
+}
+
+// What a one-time code is for. One table holds every kind of code.
+enum CodePurpose {
+  reset_password
+  verify_email
+  change_email
+
+  @@map("code_purpose")
+}
+
+// One-time 6-digit codes sent by email. Only an HMAC of the code is stored,
+// so a copy of the database does not reveal the codes. A user has at most one
+// code per purpose: asking again replaces the old one. A code stops working
+// at expires_at or after 5 wrong attempts. Codes are deleted with their user.
+model VerificationCode {
+  id         Int         @id @default(autoincrement())
+  user_id    Int
+  purpose    CodePurpose
+  code_hash  String      @db.VarChar(64)
+  attempts   Int         @default(0)
+  created_at DateTime    @default(now()) @db.Timestamptz(6)
+  expires_at DateTime    @db.Timestamptz(6)
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, purpose])
+  @@map("verification_codes")
 }
 
 // One row per ESP32, identified by its Wi-Fi MAC address

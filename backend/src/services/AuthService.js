@@ -2,6 +2,10 @@ const jwt = require('jsonwebtoken');
 const HttpError = require('../errors/HttpError');
 const User = require('../models/User');
 const Session = require('../models/Session');
+const VerificationCode = require('../models/VerificationCode');
+const prisma = require('../db/prisma');
+const mailService = require('./MailService');
+const { passwordResetEmail, passwordChangedEmail } = require('../utils/emails');
 const { jwtSecret, tokenExpiry, sessionIdleMinutes } = require('../config/auth');
 
 function unauthorized(code, message) {
@@ -96,6 +100,62 @@ class AuthService {
   async deleteAccount(userId, currentPassword) {
     const user = await this.confirmPassword(userId, currentPassword);
     await user.delete();
+  }
+
+  // Emails are sent after the response, so a slow mail provider does not slow
+  // the request down, and the response time does not show whether the email
+  // belongs to an account. A failure is logged without the message itself.
+  sendInBackground(to, email) {
+    mailService.send({ to, ...email }).catch((err) => {
+      console.error(`Mail not sent (${email.subject}): ${err.message}`);
+    });
+  }
+
+  // Always finishes the same way, whether or not the email has an account,
+  // so the answer cannot be used to find out who is registered.
+  async requestPasswordReset(email) {
+    const user = await User.findByEmail(email);
+    if (!user) {
+      return;
+    }
+    const code = await VerificationCode.issue(user.id, 'reset_password');
+    if (code) {
+      this.sendInBackground(user.email, passwordResetEmail(code, VerificationCode.CODE_MINUTES));
+    }
+  }
+
+  // One answer for every failure (no account, no code, expired, too many
+  // tries, wrong code). A wrong try is saved even though nothing else changes.
+  async resetPassword(email, code, newPassword) {
+    const user = await User.findByEmail(email);
+    const done = user
+      ? await prisma.$transaction(async (tx) => {
+        if (!(await VerificationCode.consume(tx, user.id, 'reset_password', code))) {
+          return false;
+        }
+        await user.setPassword(newPassword, tx);
+        await Session.revokeAll(user.id, tx);
+        return true;
+      })
+      : false;
+    if (!done) {
+      throw new HttpError(400, 'INVALID_CODE', 'The code is wrong or has expired. Ask for a new one.');
+    }
+    this.sendInBackground(user.email, passwordChangedEmail());
+    return user;
+  }
+
+  // Ends every session (a copied token shares the session id of this device),
+  // then starts a new one here, the same way as logoutAll().
+  async changePassword(userId, currentPassword, newPassword) {
+    const user = await this.confirmPassword(userId, currentPassword);
+    await prisma.$transaction(async (tx) => {
+      await user.setPassword(newPassword, tx);
+      await Session.revokeAll(user.id, tx);
+      await tx.verificationCode.deleteMany({ where: { user_id: user.id, purpose: 'reset_password' } });
+    });
+    this.sendInBackground(user.email, passwordChangedEmail());
+    return this.generateToken(user.id);
   }
 
   expiryMs() {

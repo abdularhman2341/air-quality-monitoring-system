@@ -80,6 +80,16 @@ class User extends BaseModel {
     }
   }
 
+  async setPassword(password, db = prisma) {
+    const passwordHash = await bcrypt.hash(password, bcryptRounds);
+    const row = await db.user.update({
+      where: { id: this.id },
+      data: { password_hash: passwordHash },
+    });
+    Object.assign(this, row);
+    return this;
+  }
+
   // Locks every admin row until the transaction ends. Two requests that each
   // remove an admin at the same moment then run one after the other, so they
   // cannot both see "another admin is left" and leave the app with none.
