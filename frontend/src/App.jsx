@@ -7,7 +7,8 @@ import Login from './pages/Login'
 import Signup from './pages/Signup'
 import AddSensor from './pages/AddSensor'
 import Profile from './pages/Profile'
-import { ProtectedRoute, GuestRoute } from './auth/ProtectedRoute'
+import Admin from './pages/admin/Admin'
+import { ProtectedRoute, GuestRoute, AdminRoute } from './auth/ProtectedRoute'
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
         <Route path="/add-sensor" element={<AddSensor />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/history" element={<History />} />
+        <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

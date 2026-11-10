@@ -93,6 +93,16 @@ export function AuthProvider({ children }) {
     connectSocket()
   }
 
+  // Re-reads the account, for example after an admin changed its role.
+  // A 401 here signs out through the unauthorized handler.
+  async function refreshUser() {
+    try {
+      setUser(await api.me())
+    } catch {
+      return
+    }
+  }
+
   async function logout() {
     try {
       await api.logout()
@@ -102,7 +112,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, updateProfile, changeEmail, deleteAccount, logoutAll, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, updateProfile, changeEmail, deleteAccount, logoutAll, refreshUser, logout }}>
       {children}
     </AuthContext.Provider>
   )

@@ -97,5 +97,21 @@ export const api = {
   unlinkDevice: (mac) => request(`/devices/${mac}`, { method: 'DELETE' }),
   readings: (mac, params) => request(`/devices/${mac}/readings?${query(params)}`),
   latestReading: (mac) => request(`/devices/${mac}/readings/latest`),
-  alerts: (params) => request(`/alerts?${query(params)}`)
+  alerts: (params) => request(`/alerts?${query(params)}`),
+  admin: {
+    actions: (params) => request(`/admin/actions?${query(params)}`),
+    users: (params) => request(`/admin/users?${query(params)}`),
+    user: (id) => request(`/admin/users/${id}`),
+    updateUser: (id, data) => request(`/admin/users/${id}`, { method: 'PATCH', body: data }),
+    deleteUser: (id) => request(`/admin/users/${id}`, { method: 'DELETE' }),
+    logoutUser: (id) => request(`/admin/users/${id}/logout-all`, { method: 'POST' }),
+    devices: (params) => request(`/admin/devices?${query(params)}`),
+    registerDevice: (device) => request('/admin/devices', { method: 'POST', body: device }),
+    updateDevice: (mac, data) => request(`/admin/devices/${mac}`, { method: 'PATCH', body: data }),
+    deleteDevice: (mac) => request(`/admin/devices/${mac}`, { method: 'DELETE' }),
+    newPairingCode: (mac) => request(`/admin/devices/${mac}/pairing-code`, { method: 'POST' }),
+    readings: (mac, params) => request(`/admin/devices/${mac}/readings?${query(params)}`),
+    alerts: (params) => request(`/admin/alerts?${query(params)}`),
+    closeAlert: (id) => request(`/admin/alerts/${id}/close`, { method: 'POST' })
+  }
 }

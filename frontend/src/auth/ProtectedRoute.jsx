@@ -29,3 +29,13 @@ export function GuestRoute({ children, redirectTo = '/' }) {
   }
   return children
 }
+
+// Inside ProtectedRoute. Hides the admin page from other accounts; the backend
+// still checks the role on every admin request (403 ADMIN_ONLY).
+export function AdminRoute({ children }) {
+  const { user } = useAuth()
+  if (user.role !== 'admin') {
+    return <Navigate to="/" replace />
+  }
+  return children
+}
