@@ -4,16 +4,17 @@ import { PAGE_SIZE } from './adminUtils'
 
 // In-page confirmation for actions that cannot be undone (not window.confirm,
 // which some browsers block and which cannot be styled or translated).
-export function ConfirmBox({ message, confirmLabel, busy, onConfirm, onCancel }) {
+// neutral is for actions that delete or end nothing, like sending an email.
+export function ConfirmBox({ message, confirmLabel, busy, onConfirm, onCancel, neutral = false }) {
   const { t } = useLanguage()
   return (
-    <div className="admin-confirm" role="alertdialog" aria-label={message}>
+    <div className={neutral ? 'admin-confirm admin-confirm-neutral' : 'admin-confirm'} role="alertdialog" aria-label={message}>
       <p>{message}</p>
       <div className="admin-confirm-actions">
         <button type="button" className="btn btn-outline" onClick={onCancel} disabled={busy}>
           {t('admin.cancel')}
         </button>
-        <button type="button" className="btn btn-danger" onClick={onConfirm} disabled={busy}>
+        <button type="button" className={neutral ? 'btn btn-primary' : 'btn btn-danger'} onClick={onConfirm} disabled={busy}>
           {busy ? t('admin.working') : confirmLabel}
         </button>
       </div>

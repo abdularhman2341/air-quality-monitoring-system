@@ -86,6 +86,14 @@ export const api = {
   logout: () => request('/auth/logout', { method: 'POST' }),
   logoutAll: (currentPassword) =>
     request('/auth/logout-all', { method: 'POST', body: { current_password: currentPassword } }),
+  forgotPassword: (email) => request('/auth/forgot-password', { method: 'POST', body: { email } }),
+  resetPassword: (email, code, newPassword) =>
+    request('/auth/reset-password', { method: 'POST', body: { email, code, new_password: newPassword } }),
+  changePassword: (currentPassword, newPassword) =>
+    request('/auth/me/password', {
+      method: 'PATCH',
+      body: { current_password: currentPassword, new_password: newPassword }
+    }),
   me: () => request('/auth/me'),
   updateMe: (data) => request('/auth/me', { method: 'PATCH', body: data }),
   changeEmail: (email, currentPassword) =>
@@ -105,6 +113,7 @@ export const api = {
     updateUser: (id, data) => request(`/admin/users/${id}`, { method: 'PATCH', body: data }),
     deleteUser: (id) => request(`/admin/users/${id}`, { method: 'DELETE' }),
     logoutUser: (id) => request(`/admin/users/${id}/logout-all`, { method: 'POST' }),
+    sendPasswordReset: (id) => request(`/admin/users/${id}/password-reset`, { method: 'POST' }),
     devices: (params) => request(`/admin/devices?${query(params)}`),
     registerDevice: (device) => request('/admin/devices', { method: 'POST', body: device }),
     updateDevice: (mac, data) => request(`/admin/devices/${mac}`, { method: 'PATCH', body: data }),

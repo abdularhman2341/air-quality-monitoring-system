@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import History from './pages/History'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import ForgotPassword from './pages/ForgotPassword'
 import AddSensor from './pages/AddSensor'
 import Profile from './pages/Profile'
 import Admin from './pages/admin/Admin'
@@ -17,6 +18,10 @@ function App() {
       <Route
         path="/signup"
         element={<GuestRoute redirectTo="/add-sensor"><AuthLayout><Signup /></AuthLayout></GuestRoute>}
+      />
+      <Route
+        path="/forgot-password"
+        element={<GuestRoute><AuthLayout><ForgotPassword /></AuthLayout></GuestRoute>}
       />
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/" element={<Dashboard />} />

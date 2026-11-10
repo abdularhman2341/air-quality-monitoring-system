@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 import { useToast } from '../toast/ToastContext'
 import { formatDate } from '../utils/format'
+import { passwordErrorKey } from '../utils/password'
 import './Profile.css'
 
 // New email + current password. The server answers 403 WRONG_PASSWORD
@@ -64,6 +65,113 @@ function ChangeEmailForm({ onDone }) {
         </button>
       </div>
     </form>
+  )
+}
+
+// Current password + the new one twice. The server ends every session and
+// gives this device a new token, so the user stays signed in here only.
+function ChangePassword() {
+  const { changePassword } = useAuth()
+  const { t, errorText } = useLanguage()
+  const showToast = useToast()
+  const [open, setOpen] = useState(false)
+  const [current, setCurrent] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [passwordError, setPasswordError] = useState(null)
+  const [error, setError] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  function close() {
+    setOpen(false)
+    setCurrent('')
+    setPassword('')
+    setConfirm('')
+    setPasswordError(null)
+    setError(null)
+    setSaving(false)
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setError(null)
+    const key = passwordErrorKey(password, confirm)
+    if (key) {
+      setPasswordError(key)
+      return
+    }
+    setSaving(true)
+    try {
+      await changePassword(current, password)
+      close()
+      showToast(t('profile.passwordChanged'))
+    } catch (err) {
+      setError(err)
+      setSaving(false)
+    }
+  }
+
+  const passwordInvalid = passwordError === 'signup.passwordTooShort' || passwordError === 'signup.passwordTooLong'
+
+  return (
+    <div className="profile-section">
+      <h2>{t('profile.passwordTitle')}</h2>
+      <p>{t('profile.passwordBody')}</p>
+      {!open ? (
+        <button type="button" className="btn btn-outline" onClick={() => setOpen(true)}>
+          {t('profile.changePassword')}
+        </button>
+      ) : (
+        <form className="form profile-subform" onSubmit={handleSubmit}>
+          <label className="field">
+            {t('profile.currentPassword')}
+            <input
+              type="password"
+              value={current}
+              onChange={(e) => setCurrent(e.target.value)}
+              autoComplete="current-password"
+              required
+              autoFocus
+            />
+          </label>
+          <label className="field">
+            {t('profile.newPassword')}
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setPasswordError(null) }}
+              autoComplete="new-password"
+              aria-invalid={passwordInvalid}
+              aria-describedby={passwordInvalid ? 'new-password-hint new-password-error' : 'new-password-hint'}
+              required
+            />
+            <span className="field-hint" id="new-password-hint">{t('signup.passwordHint')}</span>
+          </label>
+          <label className="field">
+            {t('signup.confirmPassword')}
+            <input
+              type="password"
+              value={confirm}
+              onChange={(e) => { setConfirm(e.target.value); setPasswordError(null) }}
+              autoComplete="new-password"
+              aria-invalid={passwordError === 'signup.passwordMismatch'}
+              aria-describedby={passwordError === 'signup.passwordMismatch' ? 'new-password-error' : undefined}
+              required
+            />
+          </label>
+          {passwordError && <p className="form-error" role="alert" id="new-password-error">{t(passwordError)}</p>}
+          {error && <p className="form-error" role="alert">{errorText(error)}</p>}
+          <div className="profile-actions profile-actions-end">
+            <button type="button" className="btn btn-outline" onClick={close}>
+              {t('profile.cancel')}
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={saving || !current || !password || !confirm}>
+              {saving ? t('profile.saving') : t('profile.savePassword')}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
   )
 }
 
@@ -275,6 +383,8 @@ function Profile() {
         </div>
         {editingEmail && <ChangeEmailForm onDone={() => setEditingEmail(false)} />}
       </div>
+
+      <ChangePassword />
 
       <LogoutAll />
 

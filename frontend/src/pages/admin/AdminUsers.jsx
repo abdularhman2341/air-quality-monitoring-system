@@ -108,6 +108,16 @@ function UserPanel({ user, onChanged }) {
           onConfirm={() => run(() => api.admin.logoutUser(user.id), t('admin.users.loggedOut', { name: user.name }))}
         />
       )}
+      {confirming === 'reset' && (
+        <ConfirmBox
+          message={t('admin.users.confirmReset', { email: user.email })}
+          confirmLabel={t('admin.users.sendReset')}
+          neutral
+          busy={busy}
+          onCancel={() => setConfirming(null)}
+          onConfirm={() => run(() => api.admin.sendPasswordReset(user.id), t('admin.users.resetSent', { name: user.name }))}
+        />
+      )}
       {confirming === 'delete' && (
         <ConfirmBox
           message={t(isMe ? 'admin.users.confirmDeleteSelf' : 'admin.users.confirmDelete', { name: user.name })}
@@ -119,6 +129,9 @@ function UserPanel({ user, onChanged }) {
       )}
       {!confirming && (
         <div className="admin-danger-actions">
+          <button type="button" className="btn btn-outline" onClick={() => setConfirming('reset')}>
+            {t('admin.users.sendReset')}
+          </button>
           <button type="button" className="btn btn-outline" onClick={() => setConfirming('logout')}>
             {t('admin.users.logoutAll')}
           </button>

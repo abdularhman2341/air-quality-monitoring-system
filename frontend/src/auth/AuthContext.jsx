@@ -95,6 +95,15 @@ export function AuthProvider({ children }) {
     connectSocket()
   }
 
+  // The server ends every session and answers with a new token for this
+  // device, the same as logoutAll().
+  async function changePassword(currentPassword, newPassword) {
+    const { token } = await api.changePassword(currentPassword, newPassword)
+    setToken(token)
+    disconnectSocket()
+    connectSocket()
+  }
+
   // Re-reads the account, for example after an admin changed its role.
   // A 401 here signs out through the unauthorized handler.
   async function refreshUser() {
@@ -114,7 +123,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, updateProfile, changeEmail, deleteAccount, logoutAll, refreshUser, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, updateProfile, changeEmail, deleteAccount, logoutAll, changePassword, refreshUser, logout }}>
       {children}
     </AuthContext.Provider>
   )

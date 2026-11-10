@@ -125,6 +125,29 @@
   font-size: 16px;
 }
 
+.auth-form .form-success {
+  margin-bottom: 20px;
+}
+
+.auth-forgot {
+  align-self: flex-end;
+  margin-top: -8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.auth-email {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.field input.code-input {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  letter-spacing: 0.4em;
+  text-align: center;
+}
+
 .auth-switch {
   margin-top: 24px;
   font-size: 14px;
