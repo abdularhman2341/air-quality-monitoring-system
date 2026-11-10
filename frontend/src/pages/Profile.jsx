@@ -120,6 +120,52 @@ function PendingEmail() {
   )
 }
 
+// Email when one of the user's sensors starts or ends an alarm. The switch
+// saves at once. The server sends these only to a verified email.
+function AlertEmails() {
+  const { user, updateProfile } = useAuth()
+  const { t, errorText } = useLanguage()
+  const showToast = useToast()
+  const [error, setError] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  async function toggle(e) {
+    const enabled = e.target.checked
+    setError(null)
+    setSaving(true)
+    try {
+      await updateProfile({ alert_emails: enabled })
+      showToast(t(enabled ? 'profile.alertEmailsOn' : 'profile.alertEmailsOff'))
+    } catch (err) {
+      setError(err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="profile-section">
+      <h2>{t('profile.alertEmailsTitle')}</h2>
+      <p>{t('profile.alertEmailsBody')}</p>
+      <label className="switch-row">
+        <input
+          type="checkbox"
+          role="switch"
+          className="switch"
+          checked={user.alert_emails}
+          onChange={toggle}
+          disabled={saving}
+        />
+        <span>{t('profile.alertEmailsLabel')}</span>
+      </label>
+      {user.alert_emails && user.email_verified === false && (
+        <p className="notice-warn alert-emails-note" role="status">{t('profile.alertEmailsUnverified')}</p>
+      )}
+      {error && <p className="form-error" role="alert">{errorText(error)}</p>}
+    </div>
+  )
+}
+
 // Current password + the new one twice. The server ends every session and
 // gives this device a new token, so the user stays signed in here only.
 function ChangePassword() {
@@ -436,6 +482,8 @@ function Profile() {
         {editingEmail && <ChangeEmailForm onDone={() => setEditingEmail(false)} />}
         {!editingEmail && user.pending_email && <PendingEmail />}
       </div>
+
+      {typeof user.alert_emails === 'boolean' && <AlertEmails />}
 
       <ChangePassword />
 
