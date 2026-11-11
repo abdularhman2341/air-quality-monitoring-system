@@ -3,12 +3,22 @@ import { useAuth } from './AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 
 export function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth()
-  const { t } = useLanguage()
+  const { user, loading, authError } = useAuth()
+  const { t, errorText } = useLanguage()
   const location = useLocation()
 
   if (loading) {
     return <p className="page-loading">{t('common.loading')}</p>
+  }
+  if (!user && authError) {
+    return (
+      <div className="page-loading">
+        <p role="alert">{errorText(authError)}</p>
+        <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}>
+          {t('common.retry')}
+        </button>
+      </div>
+    )
   }
   if (!user) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />

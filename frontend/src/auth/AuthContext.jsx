@@ -7,6 +7,7 @@ const AuthContext = createContext(null)
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(() => Boolean(getToken()))
+  const [authError, setAuthError] = useState(null)
   const signedIn = Boolean(user)
 
   function clearSession() {
@@ -25,7 +26,10 @@ export function AuthProvider({ children }) {
     }
     api.me()
       .then(setUser)
-      .catch(clearSession)
+      .catch((err) => {
+        // A 401 already signs out through the unauthorized handler.
+        if (err.status !== 401) setAuthError(err)
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -138,7 +142,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, updateProfile, changeEmail, confirmEmailChange, cancelEmailChange, verifyEmail, deleteAccount, logoutAll, changePassword, refreshUser, logout }}>
+    <AuthContext.Provider value={{ user, loading, authError, login, register, updateProfile, changeEmail, confirmEmailChange, cancelEmailChange, verifyEmail, deleteAccount, logoutAll, changePassword, refreshUser, logout }}>
       {children}
     </AuthContext.Provider>
   )
