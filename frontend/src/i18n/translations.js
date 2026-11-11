@@ -1,6 +1,7 @@
 export const translations = {
   en: {
     'common.loading': 'Loading…',
+    'common.retry': 'Try again',
     'header.tagline': 'MEASURE · MONITOR · BREATHE SAFER',
     'header.dashboard': 'Dashboard',
     'header.addSensor': 'Add Sensor',
@@ -287,6 +288,7 @@ export const translations = {
   },
   ar: {
     'common.loading': 'جارٍ التحميل…',
+    'common.retry': 'حاول مرة أخرى',
     'header.tagline': 'قِس · راقب · تنفّس بأمان',
     'header.dashboard': 'لوحة التحكم',
     'header.addSensor': 'إضافة حساس',
