@@ -1,13 +1,9 @@
 const authService = require('../services/AuthService');
 const realtimeGateway = require('../services/RealtimeGateway');
-const { trustProxy } = require('../config/rateLimit');
+const clientIp = require('../utils/clientIp');
 const {
   requireString, requireEmail, requirePassword, requirePasswordInput, requireCode, invalid,
 } = require('../utils/validate');
-
-// The visitor's address for the limits per address, or null when the server
-// cannot tell visitors apart (TRUST_PROXY is not set).
-const clientIp = (req) => (trustProxy === null ? null : req.ip || null);
 
 async function register(req, res) {
   const body = req.body || {};
