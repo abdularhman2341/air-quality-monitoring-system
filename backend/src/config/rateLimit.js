@@ -1,16 +1,17 @@
-// TRUST_PROXY is how many proxies stand between the internet and this server
-// (1 on Railway). Without it Express sees the proxy's address for every
-// visitor, and a limit per address would lock everyone out together, so the
-// limits per address stay off until it is set.
-const raw = process.env.TRUST_PROXY;
-const trustProxy = raw === undefined || raw === '' ? null : Number(raw);
+// CLIENT_IP_HEADER names the header the hosting edge writes with the visitor's
+// address on every request (x-real-ip on Railway). Railway does not promise a
+// fixed number of proxies, so counting them (Express "trust proxy") gave a CDN
+// address that changes on each request. Without it the limits per address stay
+// off and the limits per email still work.
+const raw = (process.env.CLIENT_IP_HEADER || '').trim().toLowerCase();
+const clientIpHeader = raw === '' ? null : raw;
 
-if (trustProxy !== null && (!Number.isInteger(trustProxy) || trustProxy < 0)) {
-  throw new Error('TRUST_PROXY must be a whole number of proxies (0 when there is none).');
+if (clientIpHeader !== null && !/^[a-z0-9-]+$/.test(clientIpHeader)) {
+  throw new Error('CLIENT_IP_HEADER must be a header name, for example x-real-ip.');
 }
 
 module.exports = {
-  trustProxy,
+  clientIpHeader,
   windowMinutes: 15,
   loginPerEmail: 5,
   loginPerAddress: 20,

@@ -10,9 +10,14 @@ afterAll(() => prisma.$disconnect());
 const AUTH = '/api/v1/auth';
 const pause = (ms = 100) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// The tests run with TRUST_PROXY=1 (tests/setup.js), so this header is the
-// client address, the same as behind the proxy in production.
-const from = (ip) => ({ 'X-Forwarded-For': ip });
+// Railway's edge writes the visitor's address in X-Real-IP, and X-Forwarded-For
+// arrives with a CDN address on the right that changes between requests. The
+// tests send both the same way (CLIENT_IP_HEADER=x-real-ip in tests/setup.js).
+let cdn = 0;
+const from = (ip) => {
+  cdn += 1;
+  return { 'X-Real-IP': ip, 'X-Forwarded-For': `${ip}, 192.0.2.${cdn % 250}` };
+};
 const login = (email, password, ip = '203.0.113.1') => api().post(`${AUTH}/login`).set(from(ip)).send({ email, password });
 const forgot = (email, ip = '203.0.113.1') => api().post(`${AUTH}/forgot-password`).set(from(ip)).send({ email });
 const reset = (email, code, ip = '203.0.113.1') => api().post(`${AUTH}/reset-password`).set(from(ip))
@@ -101,6 +106,29 @@ describe('failed sign-ins from one address', () => {
     const res = await login(user.email, user.password, '198.51.100.7').expect(429);
     expect(res.body.error.code).toBe('TOO_MANY_ATTEMPTS');
     await login(user.email, user.password, '198.51.100.8').expect(200);
+  });
+});
+
+describe('the address of the visitor', () => {
+  test('comes from X-Real-IP, so a changing X-Forwarded-For does not reset the count', async () => {
+    for (let i = 0; i < 20; i += 1) {
+      await api().post(`${AUTH}/login`)
+        .set({ 'X-Real-IP': '198.51.100.70', 'X-Forwarded-For': `10.9.8.${i}, 192.0.2.${i}` })
+        .send({ email: `guess${i}@test.local`, password: 'wrong-password' })
+        .expect(401);
+    }
+    await login('guess20@test.local', 'wrong-password', '198.51.100.70').expect(429);
+  });
+
+  test('is not counted when the header is missing or is not an address', async () => {
+    for (let i = 0; i < 21; i += 1) {
+      await api().post(`${AUTH}/login`).send({ email: `nohdr${i}@test.local`, password: 'wrong-password' }).expect(401);
+    }
+    for (let i = 0; i < 21; i += 1) {
+      await api().post(`${AUTH}/login`).set('X-Real-IP', 'not-an-address')
+        .send({ email: `bad${i}@test.local`, password: 'wrong-password' }).expect(401);
+    }
+    expect(await prisma.rateLimitHit.count({ where: { scope: { not: 'login_email' } } })).toBe(0);
   });
 });
 

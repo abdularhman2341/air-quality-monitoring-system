@@ -88,7 +88,7 @@ paths:
       description: >
         Failed tries are counted. After 5 for one email, or 20 from one address, in 15
         minutes, the answer is 429 even for the right password. A password reset
-        unlocks the email. The limit per address needs TRUST_PROXY to be set.
+        unlocks the email. The limit per address needs CLIENT_IP_HEADER to be set.
       requestBody:
         required: true
         content:
