@@ -1,4 +1,4 @@
-function cell(value) {
+export function cell(value) {
   const text = value === null || value === undefined ? '' : String(value)
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
 }
