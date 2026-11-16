@@ -4,6 +4,7 @@ const requireAuth = require('../middlewares/requireAuth');
 
 const router = Router();
 
+// The first four work without a token; everything after needs one.
 router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.post('/forgot-password', authController.forgotPassword);
