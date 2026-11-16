@@ -14,10 +14,14 @@ const COLUMNS = {
   rs_ro_ratio: true,
 };
 
+// Optional sensor fields: a missing or wrong value is stored as null instead
+// of rejecting the whole reading.
 const integerOrNull = (value) => (Number.isInteger(value) ? value : null);
 const numberOrNull = (value) => (typeof value === 'number' && Number.isFinite(value) ? value : null);
 
 class Reading extends BaseModel {
+  // Newest first. Prisma ignores a filter set to undefined, so a missing from
+  // or to (?? undefined) means "no limit on that side".
   static async findByDevice(deviceId, from, to, page, limit) {
     const where = {
       device_id: deviceId,
@@ -48,6 +52,10 @@ class Reading extends BaseModel {
     return row ? new Reading(row) : null;
   }
 
+  // Returns null when this device already has a reading at this time: QoS 1
+  // can deliver a message twice, and the unique (device_id, reading_time)
+  // index with skipDuplicates keeps one copy. reading_time is the device
+  // clock, or the server clock when the two are far apart (deviceTime).
   static async record(deviceId, payload) {
     const data = {
       device_id: deviceId,

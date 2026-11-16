@@ -13,6 +13,8 @@ const COLUMNS = {
 };
 
 class Alert extends BaseModel {
+  // The alert that has not ended yet. A device normally has only one:
+  // alarm_on is ignored while one is open (AlertService.handleAlarmEvent).
   static async findOpen(deviceId) {
     const row = await prisma.alert.findFirst({
       where: { device_id: deviceId, ended_at: null },
@@ -44,6 +46,8 @@ class Alert extends BaseModel {
     return Boolean(row && row.email_sent);
   }
 
+  // The two times can come from different clocks (deviceTime falls back to
+  // the server time), so the end is never put before the start.
   async close(endedAt) {
     const row = await prisma.alert.update({
       where: { id: this.id },
@@ -54,6 +58,8 @@ class Alert extends BaseModel {
     return this;
   }
 
+  // Raises the open alert's peak only when this reading is higher; done in
+  // the WHERE clause, so there is no read-then-write race.
   static async updatePeak(deviceId, lpgPpmEst) {
     await prisma.alert.updateMany({
       where: { device_id: deviceId, ended_at: null, peak_lpg_ppm_est: { lt: lpgPpmEst } },
@@ -123,6 +129,8 @@ class Alert extends BaseModel {
     return this.ended_at === null || this.ended_at === undefined;
   }
 
+  // The owner check is in the query itself: only alerts of the user's own
+  // devices can match. undefined filters are ignored by Prisma.
   static async getHistory(userId, { deviceId, from, to, page, limit }) {
     const where = {
       device: { owner_id: Number(userId) },
