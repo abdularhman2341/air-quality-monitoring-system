@@ -2,13 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
-
-function passwordErrorKey(password, confirm) {
-  if (password.length < 8) return 'signup.passwordTooShort'
-  if (new TextEncoder().encode(password).length > 72) return 'signup.passwordTooLong'
-  if (password !== confirm) return 'signup.passwordMismatch'
-  return null
-}
+import { passwordErrorKey } from '../utils/password'
 
 function Signup() {
   const [name, setName] = useState('')
