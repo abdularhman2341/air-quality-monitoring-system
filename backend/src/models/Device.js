@@ -1,8 +1,11 @@
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const BaseModel = require('./BaseModel');
 const HttpError = require('../errors/HttpError');
 const prisma = require('../db/prisma');
 const Reading = require('./Reading');
+const AdminAction = require('./AdminAction');
+const { bcryptRounds } = require('../config/auth');
 
 const MAC_PATTERN = /^[0-9A-F]{12}$/;
 
@@ -16,6 +19,16 @@ const COLUMNS = {
   last_reading_at: true,
   created_at: true,
 };
+
+// A device without an owner: it can be linked again with its pairing code.
+const RELEASED = { owner_id: null, name: null, location: null, last_reading_at: null, alert_email_at: null };
+
+const ADMIN_COLUMNS = { ...COLUMNS, owner: { select: { id: true, name: true, email: true } } };
+
+// Pairing codes look like K7QM-4XPB: 8 characters from 32 letters and digits
+// that are hard to confuse (no 0/O, 1/I), about 10^12 possible codes.
+const PAIRING_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const UNIQUE_VIOLATION = 'P2002';
 
 class Device extends BaseModel {
   static normalizeMac(mac) {
@@ -36,6 +49,22 @@ class Device extends BaseModel {
       select: { owner_id: true },
     });
     return row ? row.owner_id : undefined;
+  }
+
+  // Marks that an alert email is being sent for this device and returns its
+  // name and location, or null when one was sent in the last `minutes`.
+  // One statement, so two alarms at the same moment cannot both pass.
+  static async claimAlertEmail(deviceId, minutes) {
+    const rows = await prisma.$queryRaw`
+      UPDATE devices SET alert_email_at = now()
+      WHERE device_id = ${deviceId}
+        AND (alert_email_at IS NULL OR alert_email_at < now() - make_interval(mins => ${minutes}::int))
+      RETURNING name, location`;
+    return rows.length ? rows[0] : null;
+  }
+
+  static async findLabel(deviceId) {
+    return prisma.device.findUnique({ where: { device_id: deviceId }, select: { name: true, location: true } });
   }
 
   static async withLatest(row) {
@@ -101,7 +130,7 @@ class Device extends BaseModel {
     await prisma.$transaction(async (tx) => {
       const { count } = await tx.device.updateMany({
         where: { device_id: this.device_id, owner_id: this.owner_id },
-        data: { owner_id: null, name: null, location: null, last_reading_at: null },
+        data: RELEASED,
       });
       if (count === 0) {
         throw new HttpError(404, 'DEVICE_NOT_FOUND', 'Device not found.');
@@ -109,6 +138,25 @@ class Device extends BaseModel {
       await tx.alert.deleteMany({ where: { device_id: this.device_id } });
       await tx.reading.deleteMany({ where: { device_id: this.device_id } });
     });
+  }
+
+  // Unlinks every device of an account that is being deleted, inside the
+  // caller's transaction. Same rule as unlink(): the history is deleted, so
+  // the next owner of a device starts empty.
+  static async releaseAllOwnedBy(tx, userId) {
+    const ownerId = Number(userId);
+    const owned = await tx.device.findMany({ where: { owner_id: ownerId }, select: { device_id: true } });
+    const deviceIds = owned.map((device) => device.device_id);
+    if (deviceIds.length === 0) {
+      return 0;
+    }
+    await tx.alert.deleteMany({ where: { device_id: { in: deviceIds } } });
+    await tx.reading.deleteMany({ where: { device_id: { in: deviceIds } } });
+    const { count } = await tx.device.updateMany({
+      where: { device_id: { in: deviceIds }, owner_id: ownerId },
+      data: RELEASED,
+    });
+    return count;
   }
 
   static async setConnectionState(deviceId, state) {
@@ -141,6 +189,128 @@ class Device extends BaseModel {
 
   async getLatestReading() {
     return Reading.findLatest(this.device_id);
+  }
+
+  static newPairingCode() {
+    const chars = Array.from({ length: 8 }, () => PAIRING_ALPHABET[crypto.randomInt(PAIRING_ALPHABET.length)]);
+    return `${chars.slice(0, 4).join('')}-${chars.slice(4).join('')}`;
+  }
+
+  // Admin list: every device with its owner. The search matches the MAC
+  // (with or without separators), the name, the location or the owner's email.
+  static async adminSearch(query, page, limit) {
+    let where = {};
+    if (query) {
+      const contains = { contains: query, mode: 'insensitive' };
+      const mac = query.replace(/[:-]/g, '').toUpperCase();
+      where = {
+        OR: [
+          ...(mac ? [{ device_id: { contains: mac } }] : []),
+          { name: contains },
+          { location: contains },
+          { owner: { is: { email: contains } } },
+        ],
+      };
+    }
+    const [rows, total] = await Promise.all([
+      prisma.device.findMany({
+        where,
+        select: ADMIN_COLUMNS,
+        orderBy: [{ created_at: 'asc' }, { device_id: 'asc' }],
+        take: limit,
+        skip: (page - 1) * limit,
+      }),
+      prisma.device.count({ where }),
+    ]);
+    return { data: await Promise.all(rows.map((row) => Device.withLatest(row))), total };
+  }
+
+  static async adminFind(deviceId) {
+    const row = await prisma.device.findUnique({ where: { device_id: deviceId }, select: ADMIN_COLUMNS });
+    return row ? Device.withLatest(row) : null;
+  }
+
+  // Registers a new device. The pairing code is returned once and only its
+  // bcrypt hash is stored, so nobody can read it back later (not even an admin).
+  static async register(deviceId, name, location, admin) {
+    const pairingCode = Device.newPairingCode();
+    const pairingCodeHash = await bcrypt.hash(pairingCode, bcryptRounds);
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.device.create({ data: { device_id: deviceId, pairing_code_hash: pairingCodeHash, name, location } });
+        await AdminAction.log(tx, admin, 'device.create', { type: 'device', id: deviceId, label: name }, { name, location });
+      });
+    } catch (err) {
+      if (err.code === UNIQUE_VIOLATION) {
+        throw new HttpError(409, 'DEVICE_EXISTS', 'A device with this MAC address is already registered.');
+      }
+      throw err;
+    }
+    return { device: await Device.adminFind(deviceId), pairingCode };
+  }
+
+  // Admin edit of name, location and owner. A new owner (or none) gets an
+  // empty history, the same rule as unlink(): nobody sees another owner's data.
+  // newOwner is the User for a new owner_id; the log keeps both owners' emails.
+  async adminUpdate(changes, admin, newOwner = null) {
+    const data = {};
+    const details = {};
+    for (const [field, value] of Object.entries(changes)) {
+      if (value !== this[field]) {
+        data[field] = value;
+        details[field] = { from: this[field], to: value };
+      }
+    }
+    if (Object.keys(data).length === 0) {
+      return;
+    }
+    const ownerChanged = 'owner_id' in data;
+    if (ownerChanged) {
+      delete details.owner_id;
+      details.owner = { from: this.owner?.email ?? null, to: newOwner?.email ?? null };
+    }
+    const target = this.logTarget();
+    await prisma.$transaction(async (tx) => {
+      if (ownerChanged) {
+        data.last_reading_at = null;
+        await tx.alert.deleteMany({ where: { device_id: this.device_id } });
+        await tx.reading.deleteMany({ where: { device_id: this.device_id } });
+      }
+      await tx.device.update({ where: { device_id: this.device_id }, data });
+      await AdminAction.log(tx, admin, 'device.update', target, { ...details, history_deleted: ownerChanged });
+    });
+  }
+
+  // Deletes the row with its readings and alerts (ON DELETE CASCADE). The device
+  // must be registered again before anyone can link it; its MQTT messages are dropped.
+  async adminDelete(admin) {
+    await prisma.$transaction(async (tx) => {
+      await AdminAction.log(tx, admin, 'device.delete', this.logTarget(), { owner: this.owner?.email ?? null });
+      await tx.device.delete({ where: { device_id: this.device_id } });
+    });
+  }
+
+  async replacePairingCode(admin) {
+    const pairingCode = Device.newPairingCode();
+    const pairingCodeHash = await bcrypt.hash(pairingCode, bcryptRounds);
+    await prisma.$transaction(async (tx) => {
+      await tx.device.update({ where: { device_id: this.device_id }, data: { pairing_code_hash: pairingCodeHash } });
+      await AdminAction.log(tx, admin, 'device.pairing_code', this.logTarget());
+    });
+    return pairingCode;
+  }
+
+  logTarget() {
+    return { type: 'device', id: this.device_id, label: this.name };
+  }
+
+  toAdminJSON() {
+    return {
+      ...this.toJSON(),
+      owner: this.owner ? { id: String(this.owner.id), name: this.owner.name, email: this.owner.email } : null,
+      online_since: this.online_since,
+      created_at: this.created_at,
+    };
   }
 
   toJSON() {
