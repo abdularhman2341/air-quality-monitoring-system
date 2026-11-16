@@ -5,6 +5,7 @@ const deviceRoutes = require('./device.routes');
 const alertRoutes = require('./alert.routes');
 const adminRoutes = require('./admin.routes');
 
+// Mounted under /api/v1 in app.js.
 const router = Router();
 
 router.use('/health', healthRoutes);

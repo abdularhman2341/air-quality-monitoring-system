@@ -5,6 +5,10 @@ const {
   requireString, requireEmail, requirePassword, requirePasswordInput, requireCode, invalid,
 } = require('../utils/validate');
 
+// Controllers read and check the request, call a service and send the answer.
+// There is no try/catch: Express 5 passes a rejected promise to errorHandler.
+// req.body is undefined when no JSON was sent, hence `req.body || {}`.
+
 async function register(req, res) {
   const body = req.body || {};
   const name = requireString(body.name, 'name', { max: 100 });
@@ -14,6 +18,7 @@ async function register(req, res) {
   res.status(201).json({ user });
 }
 
+// The client address feeds the per-address login limit (AuthService.login).
 async function login(req, res) {
   const body = req.body || {};
   const email = requireEmail(body.email);
@@ -28,6 +33,8 @@ async function logout(req, res) {
   res.status(204).end();
 }
 
+// Ends every session of the user and answers with a new token, so only this
+// tab stays signed in. Open sockets of the old sessions are closed too.
 async function logoutAll(req, res) {
   const body = req.body || {};
   const currentPassword = requirePasswordInput(body.current_password, 'current_password');
@@ -41,6 +48,7 @@ async function me(req, res) {
   res.json(user);
 }
 
+// Only the fields that were sent are changed; sending neither is a 400.
 async function updateMe(req, res) {
   const body = req.body || {};
   const changes = {};
@@ -95,6 +103,7 @@ async function cancelEmailChange(req, res) {
   res.json(user);
 }
 
+// Same as logoutAll: other devices are signed out, this tab gets a new token.
 async function changePassword(req, res) {
   const body = req.body || {};
   const currentPassword = requirePasswordInput(body.current_password, 'current_password');
@@ -104,12 +113,15 @@ async function changePassword(req, res) {
   res.json({ token });
 }
 
+// The same 202 answer whether or not the email has an account.
 async function forgotPassword(req, res) {
   const email = requireEmail((req.body || {}).email);
   await authService.requestPasswordReset(email, clientIp(req));
   res.status(202).json({ message: 'If this email has an account, a code was sent to it.' });
 }
 
+// Every session ends, so every open socket of the user is closed. No token
+// is returned: the user signs in with the new password.
 async function resetPassword(req, res) {
   const body = req.body || {};
   const email = requireEmail(body.email);
