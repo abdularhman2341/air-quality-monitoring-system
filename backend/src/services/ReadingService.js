@@ -5,6 +5,10 @@ const alertService = require('./AlertService');
 const realtimeGateway = require('./RealtimeGateway');
 
 class ReadingService {
+  // Saves one reading from MQTT. QoS 1 can deliver the same message twice;
+  // the second copy (same device and time) is not saved and Reading.record
+  // returns null, so nothing else runs and the dashboard gets it once.
+  // While the alarm is on, each reading can raise the open alert's peak.
   async processTelemetry(deviceId, payload, ownerId) {
     const reading = await Reading.record(deviceId, payload);
     if (!reading) return null;
@@ -16,6 +20,7 @@ class ReadingService {
     return reading;
   }
 
+  // getDevice first, so a user can only read their own devices (404 otherwise).
    async getHistoricalReadings(userId, mac, from, to, page, limit) {
     const device = await deviceService.getDevice(userId, mac);
     const { data, total } = await device.getReadings(from, to, page, limit);
