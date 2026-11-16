@@ -22,8 +22,12 @@ app.use(express.json());
 
 app.use('/api/v1/docs', swaggerUi.serve, swaggerUi.setup(openapi));
 app.use('/api/v1', routes);
+// Any other /api path is a JSON 404, never the site's index.html.
 app.use('/api', notFound);
 
+// In production the same server also serves the built React site
+// (FRONTEND_DIST). Any other GET gets index.html, so a page like /history
+// still opens on refresh: react-router picks the page in the browser.
 if (frontendDist) {
   app.use(express.static(frontendDist));
   app.use((req, res, next) => {
