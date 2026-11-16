@@ -81,6 +81,7 @@ log_type notice
 log_type information
 
 listener 1883
+use_username_as_clientid true
 CONF_EOF
 
 if [ -n "${TLS_CA_CERT:-}" ] && [ -n "${TLS_SERVER_CERT:-}" ] && [ -n "${TLS_SERVER_KEY:-}" ]; then
@@ -92,6 +93,7 @@ if [ -n "${TLS_CA_CERT:-}" ] && [ -n "${TLS_SERVER_CERT:-}" ] && [ -n "${TLS_SER
   cat >> "$CONF" <<TLS_EOF
 
 listener 8883
+use_username_as_clientid true
 cafile $CERTS/ca.crt
 certfile $CERTS/server.crt
 keyfile $CERTS/server.key
