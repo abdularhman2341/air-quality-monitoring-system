@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 
 const ToastContext = createContext(null)
 
+// One short message at a time at the bottom of the screen; a new one
+// replaces the old one. role="status" lets screen readers announce it.
 export function ToastProvider({ children }) {
   const [message, setMessage] = useState('')
   const timer = useRef(null)

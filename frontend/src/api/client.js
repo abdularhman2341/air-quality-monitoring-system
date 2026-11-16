@@ -1,6 +1,11 @@
+// Every call to the backend goes through request(). VITE_API_URL is set at
+// build time: http://localhost:3000/api/v1 locally, /api/v1 when the backend
+// serves the site from the same domain.
 const API_URL = import.meta.env.VITE_API_URL
 export const TOKEN_KEY = 'aqms_token'
 
+// The backend's { error: { code, message } } as an Error. Pages show it with
+// errorText(err), which translates by code.
 export class ApiError extends Error {
   constructor (status, code, message) {
     super(message)
@@ -15,6 +20,8 @@ export function setUnauthorizedHandler (handler) {
   onUnauthorized = handler
 }
 
+// localStorage can throw (blocked storage, some private windows). Then the
+// token is simply not kept, instead of the page crashing.
 export function getToken () {
   try {
     return localStorage.getItem(TOKEN_KEY)
@@ -45,6 +52,7 @@ async function request (path, { method = 'GET', body } = {}) {
     headers.Authorization = `Bearer ${token}`
   }
 
+  // fetch only throws when no answer came back at all (offline, server down).
   let res
   try {
     res = await fetch(`${API_URL}${path}`, {
@@ -59,9 +67,12 @@ async function request (path, { method = 'GET', body } = {}) {
   if (res.status === 204) {
     return null
   }
+  // An answer that is not JSON (a proxy error page, for example) becomes null.
   const data = await res.json().catch(() => null)
   if (!res.ok) {
     const error = data?.error || {}
+    // Sign out only if the token that failed is still the current one: an old
+    // request finishing after a new sign-in must not end the new session.
     if (res.status === 401 && getToken() === token) {
       onUnauthorized()
     }
@@ -70,6 +81,7 @@ async function request (path, { method = 'GET', body } = {}) {
   return data
 }
 
+// Builds the query string, skipping empty filters.
 function query (params = {}) {
   const search = new URLSearchParams()
   for (const [name, value] of Object.entries(params)) {
@@ -80,6 +92,7 @@ function query (params = {}) {
   return search.toString()
 }
 
+// One function per backend route (backend/docs/openapi.yaml).
 export const api = {
   register: (name, email, password) => request('/auth/register', { method: 'POST', body: { name, email, password } }),
   login: (email, password) => request('/auth/login', { method: 'POST', body: { email, password } }),

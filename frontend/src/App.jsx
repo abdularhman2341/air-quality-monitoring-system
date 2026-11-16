@@ -11,6 +11,8 @@ import Profile from './pages/Profile'
 import Admin from './pages/admin/Admin'
 import { ProtectedRoute, GuestRoute, AdminRoute } from './auth/ProtectedRoute'
 
+// GuestRoute pages are for signed-out users; ProtectedRoute pages need a
+// session. A new account goes straight to adding its first sensor.
 function App() {
   return (
     <Routes>
