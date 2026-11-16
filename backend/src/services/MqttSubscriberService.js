@@ -37,10 +37,6 @@ const HANDLERS = {
 };
 
 class MqttSubscriberService {
-  constructor() {
-    this.queues = new Map();
-  }
-
   connect() {
     const url = process.env.MQTT_URL;
     if (!url) {
@@ -59,24 +55,21 @@ class MqttSubscriberService {
       this.subscribe(DEVICE_TOPICS);
     });
     this.client.on('error', (err) => console.error(`MQTT error: ${err.message}`));
-    this.client.on('message', (topic, payload) => this.enqueue(topic, payload));
+    this.client.handleMessage = (packet, done) => {
+      this.handleMessage(packet.topic, packet.payload).then(
+        () => done(),
+        (err) => {
+          console.error(`MQTT ${packet.topic}: ${err.message}`);
+          done(err);
+          this.client.stream.destroy();
+        },
+      );
+    };
   }
 
   get status() {
     if (!this.client) return 'disabled';
     return this.client.connected ? 'connected' : 'disconnected';
-  }
-
-  enqueue(topic, payload) {
-    const key = topic.split('/')[2] || topic;
-    const previous = this.queues.get(key) || Promise.resolve();
-    const current = previous
-      .then(() => this.handleMessage(topic, payload))
-      .catch((err) => console.error(`MQTT ${topic}: ${err.message}`));
-    this.queues.set(key, current);
-    current.then(() => {
-      if (this.queues.get(key) === current) this.queues.delete(key);
-    });
   }
 
   subscribe(topic) {
