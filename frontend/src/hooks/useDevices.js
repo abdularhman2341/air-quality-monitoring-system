@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { onLiveUpdate } from '../realtime/socketClient'
 
+// The user's devices, reloaded every refreshMs and on every live event.
+// loading is true only until the first answer, so the list does not flash.
 export function useDevices(refreshMs) {
   const [devices, setDevices] = useState([])
   const [loading, setLoading] = useState(true)

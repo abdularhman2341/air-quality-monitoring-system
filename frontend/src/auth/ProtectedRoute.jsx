@@ -2,6 +2,9 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 
+// Signed out: go to /login, remembering this page to come back to.
+// If the account check failed for another reason (server down), show a retry
+// button instead of signing the user out.
 export function ProtectedRoute({ children }) {
   const { user, loading, authError } = useAuth()
   const { t, errorText } = useLanguage()

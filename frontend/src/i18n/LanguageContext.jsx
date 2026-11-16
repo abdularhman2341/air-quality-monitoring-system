@@ -2,10 +2,12 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { translations, errorMessages } from './translations'
 
 const STORAGE_KEY = 'aqms_lang'
+// Locales for dates and times. ar-u-nu-latn is Arabic with 0-9 digits.
 const LOCALES = { en: 'en-GB', ar: 'ar-u-nu-latn' }
 
 const LanguageContext = createContext(null)
 
+// The saved choice first, then the browser language, else English.
 function initialLanguage() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
@@ -31,11 +33,16 @@ export function LanguageProvider({ children }) {
     }
   }, [lang])
 
+  // Fills {name}-style placeholders from vars. A missing Arabic text falls
+  // back to English, then to the key itself.
   function t(key, vars = {}) {
     const text = translations[lang][key] ?? translations.en[key] ?? key
     return text.replace(/\{(\w+)\}/g, (match, name) => vars[name] ?? match)
   }
 
+  // The backend writes its messages in English, so English shows them as they
+  // are. Arabic translates by error code; a code with no translation shows
+  // the general UNKNOWN_ERROR text.
   function errorText(err) {
     if (lang === 'en') {
       return err.message

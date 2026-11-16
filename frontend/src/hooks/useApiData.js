@@ -1,10 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { onLiveUpdate } from '../realtime/socketClient'
 
+// Loads data for a page and keeps it fresh: again every refreshMs (if set) and
+// on every live event from the socket.
+// `key` says what is being shown (for example the device and the filters).
+// A new key loads again and never shows the old key's data in between; null
+// means "nothing to load yet". On an error, the last good data for the same
+// key stays on screen next to the error.
 export function useApiData(request, key, refreshMs) {
   const [state, setState] = useState({ key: null, data: null, error: null })
   const requestRef = useRef(request)
 
+  // Always call the newest request function (it sees the current filters)
+  // without restarting the timer on every render.
   useEffect(() => {
     requestRef.current = request
   })
@@ -13,6 +21,7 @@ export function useApiData(request, key, refreshMs) {
     if (key === null) {
       return
     }
+    // An answer that arrives after the key changed or the page closed is ignored.
     let active = true
 
     function load() {
