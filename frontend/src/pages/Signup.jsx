@@ -21,6 +21,9 @@ function Signup() {
   const { register } = useAuth()
   const { t, errorText } = useLanguage()
 
+  // Password rules are checked here first, so the common mistakes get a clear
+  // message without a request. The backend checks them again. On success
+  // GuestRoute moves on to /add-sensor.
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)

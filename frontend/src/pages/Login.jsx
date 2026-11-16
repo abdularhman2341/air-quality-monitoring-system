@@ -13,6 +13,9 @@ function Login() {
   const { login } = useAuth()
   const { t, errorText } = useLanguage()
 
+  // On success nothing else happens here: the user is set, and GuestRoute
+  // moves on to the page they came from. submitting stays true because this
+  // page is leaving.
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)

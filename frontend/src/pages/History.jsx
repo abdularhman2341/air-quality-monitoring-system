@@ -10,6 +10,8 @@ import './History.css'
 
 const REFRESH_MS = 60000
 const PAGE_SIZE = 50
+// The backend's largest page (limit 1000), so an export holds the newest
+// 1000 rows of the chosen range.
 const EXPORT_LIMIT = 1000
 const RANGES = [
   { days: 1, label: 'history.range24h' },
@@ -17,6 +19,7 @@ const RANGES = [
   { days: 30, label: 'history.range30d' }
 ]
 
+// The range always ends now, so each refresh moves its start forward too.
 function since(days) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
 }
@@ -31,6 +34,8 @@ function History() {
   const [page, setPage] = useState(1)
   const [exporting, setExporting] = useState(false)
 
+  // Readings are fetched per device (the API has no "all devices" readings),
+  // so "all" shows the first device on the readings tab. Alerts can be all.
   const readingsDevice = deviceFilter === 'all' ? devices[0]?.device_id : deviceFilter
   const selectedDevice = tab === 'alerts' ? deviceFilter : readingsDevice || ''
 
@@ -56,6 +61,7 @@ function History() {
     return device?.name || device?.mac_display || id
   }
 
+  // Any filter change goes back to page 1.
   function changeFilter(update) {
     update()
     setPage(1)

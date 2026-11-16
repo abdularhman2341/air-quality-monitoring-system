@@ -9,6 +9,7 @@ import { useLanguage } from '../i18n/LanguageContext'
 import { GAUGE_MAX_PPM, THRESHOLD_PPM, formatDateTime, formatPpm, formatTime } from '../utils/format'
 import './Dashboard.css'
 
+// Live socket events refresh the page at once; this timer is only a backup.
 const REFRESH_MS = 60000
 const CHART_POINTS = 30
 const STATE_COLORS = {
@@ -17,6 +18,7 @@ const STATE_COLORS = {
   offline: { ink: 'var(--offline-ink)', dot: 'var(--text-faint)', fill: 'rgba(156, 163, 175, 0.15)' }
 }
 
+// Offline comes first: an offline device's last reading is not current.
 function deviceState(device) {
   if (device.connection_state !== 'online') {
     return 'offline'
@@ -32,6 +34,8 @@ function Dashboard() {
   const { t, locale, errorText } = useLanguage()
   const location = useLocation()
   const { devices, loading, error } = useDevices(REFRESH_MS)
+  // AddSensor opens the dashboard on the device it just linked. An unknown or
+  // removed id falls back to the first device.
   const [selectedId, setSelectedId] = useState(location.state?.selected || '')
   const device = devices.find((d) => d.device_id === selectedId) || devices[0]
   const { data: readingData } = useApiData(
@@ -39,6 +43,7 @@ function Dashboard() {
     device ? `readings|${device.device_id}` : null,
     REFRESH_MS
   )
+  // Only the newest alert is needed: it is open when it has no ended_at.
   const { data: alertData } = useApiData(
     () => api.alerts({ device_id: device.device_id, limit: 1 }),
     device ? `alert|${device.device_id}` : null,
@@ -65,6 +70,9 @@ function Dashboard() {
   const colors = STATE_COLORS[state]
   const value = device.latest ? device.latest.lpg_ppm_est : null
   const openAlert = alertData?.data?.[0] && !alertData.data[0].ended_at ? alertData.data[0] : null
+  // The API sends readings newest first; the chart draws oldest to newest.
+  // The y axis reaches at least GAUGE_MAX_PPM, so the threshold line stays in
+  // the same place unless a reading goes higher.
   const chartData = (readingData?.data || []).slice().reverse().map((r) => ({ time: r.reading_time, ppm: r.lpg_ppm_est }))
   const chartMax = Math.max(GAUGE_MAX_PPM, ...chartData.map((r) => r.ppm))
   const lastReadingAt = device.last_reading_at
