@@ -2,15 +2,21 @@ import { GAUGE_MAX_PPM, THRESHOLD_PPM, formatPpm } from '../utils/format'
 
 const CENTER = 100
 const RADIUS = 80
+// A half circle from left (0 ppm) to right (GAUGE_MAX_PPM), centre (100, 100)
+// and radius 80, in SVG viewBox units.
 const ARC = 'M20 100 A80 80 0 0 1 180 100'
 
+// A point on a circle around the centre. SVG y grows downwards, hence minus.
 function point(angle, radius) {
   return [CENTER + radius * Math.cos(angle), CENTER - radius * Math.sin(angle)]
 }
 
 function Gauge({ value, color, unitLabel, thresholdLabel }) {
   const fraction = value === null ? 0 : Math.min(Math.max(value / GAUGE_MAX_PPM, 0), 1)
+  // The coloured arc is the same path, drawn with a dash as long as the
+  // value's share of the half circle (π × radius); the gap of 400 hides the rest.
   const length = Math.PI * RADIUS
+  // The threshold mark: π (left) at 0 ppm, 0 (right) at GAUGE_MAX_PPM.
   const tickAngle = Math.PI * (1 - THRESHOLD_PPM / GAUGE_MAX_PPM)
   const [x1, y1] = point(tickAngle, 68)
   const [x2, y2] = point(tickAngle, 92)
