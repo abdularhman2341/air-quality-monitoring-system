@@ -11,6 +11,9 @@ const mailService = require('./MailService');
 const { passwordResetEmail, emailVerificationEmail, emailChangedEmail } = require('../utils/emails');
 const realtimeGateway = require('./RealtimeGateway');
 
+// What the admin pages can do. Every route reaches here through requireAdmin,
+// and every change is recorded in admin_actions (AdminAction.log) with the
+// admin who made it.
 class AdminService {
   async listUsers(query, page, limit) {
     return User.search(query, page, limit);
@@ -52,6 +55,7 @@ class AdminService {
     return user.adminVerifyEmail(admin);
   }
 
+  // The user's open tabs are closed at once, not at their next request.
   async deleteUser(userId, admin) {
     const user = await this.getUser(userId);
     await user.delete(admin);
@@ -95,6 +99,8 @@ class AdminService {
     return Device.register(Device.normalizeMac(mac), name, location, admin);
   }
 
+  // A new owner must exist (404 otherwise). The device is read again so the
+  // answer shows the stored values.
   async updateDevice(mac, changes, admin) {
     const device = await this.getDevice(mac);
     let newOwner = null;

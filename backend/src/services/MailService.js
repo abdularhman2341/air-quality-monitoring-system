@@ -1,6 +1,10 @@
 const mailConfig = require('../config/mail');
 const MailError = require('../errors/MailError');
 
+// Sends email through the driver chosen in config/mail.js. The app uses the
+// shared instance. The class is exported too and takes its config as an
+// argument, but nothing in the repo builds a second one today (the tests
+// reload the module with other environment variables instead).
 class MailService {
   constructor(config = mailConfig) {
     this.config = config;
@@ -46,6 +50,9 @@ class MailService {
     this.outbox.length = 0;
   }
 
+  // Resend's HTTP API (POST /emails). Every failure becomes a MailError with
+  // a reason: timeout (MAIL_TIMEOUT_MS), network, or Resend's own error name.
+  // https://resend.com/docs/api-reference/emails/send-email
   async sendWithResend(message) {
     let response;
     try {
