@@ -7,6 +7,8 @@ const {
 } = require('../utils/validate');
 
 const ROLES = ['user', 'admin'];
+// The largest PostgreSQL integer: ids are Int columns. A bigger number would
+// make the database query fail instead of answering 404.
 const MAX_ID = 2147483647;
 
 function readPage(query) {
@@ -15,6 +17,7 @@ function readPage(query) {
   return { page, limit };
 }
 
+// The search text for ?q=, trimmed and cut to 100 characters.
 function readSearch(query) {
   return typeof query.q === 'string' ? query.q.trim().slice(0, 100) : '';
 }
@@ -100,6 +103,8 @@ async function getDevice(req, res) {
   res.json(device.toAdminJSON());
 }
 
+// The new pairing code is shown only in this answer (and in replacePairingCode's):
+// the database keeps a bcrypt hash, so it cannot be read back later.
 async function registerDevice(req, res) {
   const body = req.body || {};
   const mac = requireString(body.mac_address, 'mac_address', { max: 17 });
@@ -109,6 +114,7 @@ async function registerDevice(req, res) {
   res.status(201).json({ device: device.toAdminJSON(), pairing_code: pairingCode });
 }
 
+// owner_id null (or '') frees the device; a number moves it to that user.
 function readOwnerId(value) {
   if (value === null || value === '') {
     return null;
