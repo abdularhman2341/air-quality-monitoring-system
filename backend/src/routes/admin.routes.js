@@ -5,6 +5,7 @@ const requireAdmin = require('../middlewares/requireAdmin');
 
 const router = Router();
 
+// Every admin route: signed in first, then the admin role is checked.
 router.use(requireAuth, requireAdmin);
 
 router.get('/actions', adminController.listActions);

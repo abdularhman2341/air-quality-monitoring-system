@@ -6,6 +6,8 @@ async function list(req, res) {
   res.json(devices);
 }
 
+// mac_address allows 17 characters for the AA:BB:CC:DD:EE:FF form; the
+// service normalizes it. Linking needs a verified email (device.routes.js).
 async function link(req, res) {
   const body = req.body || {};
   const mac = requireString(body.mac_address, 'mac_address', { max: 17 });

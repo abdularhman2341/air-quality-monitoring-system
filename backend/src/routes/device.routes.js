@@ -10,6 +10,8 @@ const router = Router();
 router.use(requireAuth);
 
 router.get('/', deviceController.list);
+// Only linking needs a verified email; an unverified user can still see
+// and manage what they already have.
 router.post('/', requireVerifiedEmail, deviceController.link);
 router.get('/:mac', deviceController.get);
 router.patch('/:mac', deviceController.update);
