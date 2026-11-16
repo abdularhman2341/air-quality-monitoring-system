@@ -1,3 +1,5 @@
+// console prints emails to the log (local), memory keeps them in a list
+// (tests), resend sends them for real (production).
 const DRIVERS = ['console', 'memory', 'resend'];
 
 const driver = process.env.MAIL_DRIVER || 'console';

@@ -8,6 +8,7 @@ const mailService = require('./services/MailService');
 const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
 
+// Express and Socket.IO share one HTTP server and one port.
 realtimeGateway.init(server);
 
 server.listen(PORT, () => {
