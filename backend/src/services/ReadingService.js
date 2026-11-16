@@ -21,7 +21,7 @@ class ReadingService {
   }
 
   // getDevice first, so a user can only read their own devices (404 otherwise).
-   async getHistoricalReadings(userId, mac, from, to, page, limit) {
+  async getHistoricalReadings(userId, mac, from, to, page, limit) {
     const device = await deviceService.getDevice(userId, mac);
     const { data, total } = await device.getReadings(from, to, page, limit);
     return { data, page, limit, total };

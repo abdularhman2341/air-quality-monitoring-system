@@ -5,7 +5,7 @@ const realtimeGateway = require('./RealtimeGateway');
 // Device rules for the REST API (always for the signed-in user) and the
 // status and last-reading updates that MQTT messages trigger.
 class DeviceService {
-    async getUserDevices(userId) {
+  async getUserDevices(userId) {
     return Device.findByOwner(userId);
   }
 

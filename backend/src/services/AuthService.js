@@ -109,7 +109,7 @@ class AuthService {
     }
     return user;
   }
-  
+
   async updateProfile(userId, data) {
     const user = await this.getUser(userId);
     return user.updateProfile(data);
