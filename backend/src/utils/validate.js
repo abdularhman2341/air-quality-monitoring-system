@@ -1,5 +1,10 @@
 const HttpError = require('../errors/HttpError');
 
+// Request checks for the controllers. Each one returns the clean value or
+// throws a 400 VALIDATION_ERROR whose message names the field.
+
+// Only the basic shape (something@something.tld); the real proof that an
+// address works is the verification code sent to it.
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function invalid(message) {
@@ -16,6 +21,7 @@ function requireString(value, field, { min = 1, max = 255 } = {}) {
   return value.trim();
 }
 
+// Lower-cased, so the same address always finds the same account.
 function requireEmail(value) {
   const email = requireString(value, 'email').toLowerCase();
   if (!EMAIL_PATTERN.test(email)) {
@@ -24,6 +30,9 @@ function requireEmail(value) {
   return email;
 }
 
+// For a new password. bcrypt only uses the first 72 bytes, so a longer one
+// is refused instead of being cut silently. Bytes, not characters: an
+// Arabic letter is 2 bytes.
 function requirePassword(value) {
   if (typeof value !== 'string' || value.length < 8) {
     throw invalid('password must be at least 8 characters.');
@@ -34,6 +43,8 @@ function requirePassword(value) {
   return value;
 }
 
+// For a password the user already has (sign-in, confirming an action):
+// only present and within 72 bytes. The 8-character rule is for new ones.
 function requirePasswordInput(value, field) {
   if (typeof value !== 'string' || value.length === 0) {
     throw invalid(`${field} is required.`);
@@ -71,6 +82,8 @@ function optionalDate(value, field) {
   return date;
 }
 
+// Query-string numbers such as page and limit: digits only, within range,
+// or the fallback when missing.
 function optionalInt(value, field, { min = 1, max, fallback }) {
   if (value === undefined || value === '') {
     return fallback;

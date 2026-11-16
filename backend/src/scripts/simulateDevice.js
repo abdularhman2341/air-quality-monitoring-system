@@ -2,6 +2,10 @@ require('dotenv').config({ quiet: true });
 const readline = require('readline');
 const mqtt = require('mqtt');
 
+// npm run simulate [MAC]. Acts like the ESP32: sends a reading every
+// SIM_INTERVAL_MS and the same alarm_on/alarm_off events, with the same
+// retained online status and offline Last Will. See the bottom of the file
+// for the keys that start a fake leak.
 const MQTT_URL = process.env.MQTT_URL || 'mqtt://localhost:1883';
 const DEVICE_ID = (process.argv[2] || 'A4CF123B9E01').replace(/[:-]/g, '').toUpperCase();
 const INTERVAL_MS = Number(process.env.SIM_INTERVAL_MS) || 5000;

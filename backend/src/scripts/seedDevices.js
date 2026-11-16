@@ -2,6 +2,9 @@ require('dotenv').config({ quiet: true });
 const bcrypt = require('bcryptjs');
 const prisma = require('../db/prisma');
 
+// npm run seed:devices. Adds two demo devices with 30 readings each, for
+// trying the dashboard without hardware. A device that already exists is
+// skipped, so running it twice is safe.
 const DEMO_DEVICES = [
   { id: 'A4CF123B9E01', pairingCode: '482913', state: 'online', basePpm: 120, alarmAt: null },
   { id: 'A4CF123B9E7F', pairingCode: '735104', state: 'offline', basePpm: 60, alarmAt: 3 },
