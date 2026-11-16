@@ -19,6 +19,8 @@ function UserPanel({ user, onChanged }) {
   const [confirming, setConfirming] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  // An admin editing their own account: after a change the session's user
+  // is re-read, so a self-demotion takes effect on the page at once.
   const isMe = user.id === me.id
   useAdminOnlyCheck(error)
 
@@ -169,6 +171,7 @@ function AdminUsers() {
   const { user: me } = useAuth()
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
+  // version is part of the data key: raising it reloads the list after a change.
   const [version, setVersion] = useState(0)
   const [open, setOpen] = useState(null)
   const { data, loading, error } = useApiData(

@@ -7,9 +7,12 @@ import { formatDateTime, formatPpm } from '../../utils/format'
 import { ConfirmBox, Pager, PairingCodeBox, SearchBar } from './shared'
 import { PAGE_SIZE, useAdminOnlyCheck } from './adminUtils'
 
+// The backend's largest admin page, so the owner list shows the first 200
+// accounts (oldest first).
 const OWNER_LIST_LIMIT = 200
 const READINGS_SHOWN = 10
 
+// Registers a new device and shows its pairing code once (PairingCodeBox).
 function RegisterDevice({ onRegistered }) {
   const { t, errorText } = useLanguage()
   const [mac, setMac] = useState('')
@@ -101,6 +104,8 @@ function DevicePanel({ device, onChanged }) {
 
   const ownerChanged = ownerId !== (device.owner?.id || '')
 
+  // Runs one admin action with the busy state, error and toast in one place.
+  // close: false keeps the panel open (a new pairing code, the last readings).
   async function run(action, message, { close = true } = {}) {
     setError(null)
     setBusy(true)
@@ -118,6 +123,8 @@ function DevicePanel({ device, onChanged }) {
     }
   }
 
+  // Only the fields that changed are sent. An emptied name or location is
+  // sent as null, which clears it.
   function changes() {
     const data = {}
     if (name.trim() !== (device.name || '')) data.name = name.trim() || null
@@ -133,6 +140,7 @@ function DevicePanel({ device, onChanged }) {
       showToast(t('admin.users.noChanges'))
       return
     }
+    // Taking a device away from its current owner asks first.
     if (ownerChanged && device.owner && confirming !== 'owner') {
       setConfirming('owner')
       return
@@ -246,6 +254,7 @@ function AdminDevices() {
   const { t, locale, errorText } = useLanguage()
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
+  // version is part of the data key: raising it reloads the list after a change.
   const [version, setVersion] = useState(0)
   const [open, setOpen] = useState(null)
   const { data, loading, error } = useApiData(

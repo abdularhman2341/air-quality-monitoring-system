@@ -7,6 +7,8 @@ import { formatDateTime, formatDuration, formatPpm } from '../../utils/format'
 import { ConfirmBox, Pager } from './shared'
 import { PAGE_SIZE, useAdminOnlyCheck } from './adminUtils'
 
+// Opens on open alerts, because ending an alert that is stuck open (the
+// device never sent alarm_off) is the action this page is for.
 function AdminAlerts() {
   const { t, locale, errorText } = useLanguage()
   const showToast = useToast()
