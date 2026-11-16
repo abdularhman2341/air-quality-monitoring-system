@@ -7,6 +7,7 @@ const Reading = require('./Reading');
 const AdminAction = require('./AdminAction');
 const { bcryptRounds } = require('../config/auth');
 
+// The device id is the ESP32 Wi-Fi MAC: 12 upper-case hex characters.
 const MAC_PATTERN = /^[0-9A-F]{12}$/;
 
 const COLUMNS = {
@@ -28,9 +29,11 @@ const ADMIN_COLUMNS = { ...COLUMNS, owner: { select: { id: true, name: true, ema
 // Pairing codes look like K7QM-4XPB: 8 characters from 32 letters and digits
 // that are hard to confuse (no 0/O, 1/I), about 10^12 possible codes.
 const PAIRING_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+// Prisma's error code for a duplicate key.
 const UNIQUE_VIOLATION = 'P2002';
 
 class Device extends BaseModel {
+  // Accepts aa:bb:cc:dd:ee:ff, AA-BB-..., or no separators; 400 otherwise.
   static normalizeMac(mac) {
     const normalized = String(mac ?? '').replace(/[:-]/g, '').trim().toUpperCase();
     if (!MAC_PATTERN.test(normalized)) {
@@ -43,6 +46,7 @@ class Device extends BaseModel {
     return deviceId.match(/.{2}/g).join(':');
   }
 
+  // undefined: the device is not registered. null: registered, no owner yet.
   static async findOwnerId(deviceId) {
     const row = await prisma.device.findUnique({
       where: { device_id: deviceId },
@@ -67,6 +71,7 @@ class Device extends BaseModel {
     return prisma.device.findUnique({ where: { device_id: deviceId }, select: { name: true, location: true } });
   }
 
+  // Adds the newest reading's fields, which toJSON shows as `latest`.
   static async withLatest(row) {
     const latest = await prisma.reading.findFirst({
       where: { device_id: row.device_id },
@@ -85,6 +90,7 @@ class Device extends BaseModel {
     return Promise.all(rows.map((row) => Device.withLatest(row)));
   }
 
+  // The owner is part of the query, so another user's device is never found.
   static async findOwned(userId, deviceId) {
     const row = await prisma.device.findFirst({
       where: { device_id: deviceId, owner_id: Number(userId) },
@@ -93,6 +99,9 @@ class Device extends BaseModel {
     return row ? Device.withLatest(row) : null;
   }
 
+  // A wrong code and an unknown MAC get the same 404, so the API cannot be
+  // used to find out which MACs exist. The update only succeeds when the
+  // device is free or already ours; a second user gets 409.
   static async link(userId, deviceId, pairingCode, name, location) {
     const ownerId = Number(userId);
     const device = await prisma.device.findUnique({
@@ -159,6 +168,8 @@ class Device extends BaseModel {
     return count;
   }
 
+  // 'online' only changes an offline device, so online_since keeps the time
+  // of the first connection when 'online' is sent again (it is retained).
   static async setConnectionState(deviceId, state) {
     if (state === 'online') {
       await prisma.device.updateMany({
@@ -173,6 +184,7 @@ class Device extends BaseModel {
     });
   }
 
+  // Only moves forward, so a late or resent reading never moves it back.
   static async updateLastReading(deviceId, readingTime) {
     await prisma.device.updateMany({
       where: {
@@ -191,6 +203,7 @@ class Device extends BaseModel {
     return Reading.findLatest(this.device_id);
   }
 
+  // crypto.randomInt, not Math.random: the code must not be guessable.
   static newPairingCode() {
     const chars = Array.from({ length: 8 }, () => PAIRING_ALPHABET[crypto.randomInt(PAIRING_ALPHABET.length)]);
     return `${chars.slice(0, 4).join('')}-${chars.slice(4).join('')}`;
@@ -313,6 +326,9 @@ class Device extends BaseModel {
     };
   }
 
+  // estimate_validated is always false for now: lpg_ppm_est is an estimate
+  // until reference testing is done, and the dashboard labels it so (stage 3
+  // report, risk R1).
   toJSON() {
     return {
       device_id: this.device_id,

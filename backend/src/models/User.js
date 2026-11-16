@@ -9,6 +9,8 @@ const { bcryptRounds } = require('../config/auth');
 const UNIQUE_VIOLATION = 'P2002';
 
 class User extends BaseModel {
+  // The unique email index decides, so two sign-ups with one email at the same
+  // moment cannot both succeed: the second gets 409 EMAIL_TAKEN.
   static async register(name, email, password) {
     const passwordHash = await bcrypt.hash(password, bcryptRounds);
     try {
@@ -97,6 +99,7 @@ class User extends BaseModel {
     }
   }
 
+  // db lets a caller run this inside its own transaction (tx).
   async setPassword(password, db = prisma) {
     const passwordHash = await bcrypt.hash(password, bcryptRounds);
     const row = await db.user.update({
@@ -216,6 +219,7 @@ class User extends BaseModel {
     return this.role === 'admin';
   }
 
+  // What the API sends: never the password hash.
   toJSON() {
     const json = {
       id: String(this.id),
