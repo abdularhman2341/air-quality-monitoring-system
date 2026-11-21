@@ -86,6 +86,7 @@ const ar = {
   'dashboard.alarmSince': 'بدأ {time} · الذروة {ppm} ppm',
   'dashboard.noAlerts': 'لا توجد تنبيهات نشطة',
   'dashboard.allNormal': 'كل شيء طبيعي.',
+  'dashboard.alertsUnknown': 'حالة التنبيهات غير معروفة',
   'dashboard.viewHistory': 'عرض السجل والتنبيهات',
   'dashboard.recentReadings': 'القراءات الأخيرة',
   'dashboard.lastCount': 'آخر {count} قراءة',
