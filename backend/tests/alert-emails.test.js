@@ -2,6 +2,7 @@ const {
   api, prisma, resetDatabase, signUp, registerDevice, linkDevice, publish,
 } = require('./helpers');
 const mailService = require('../src/services/MailService');
+const { makeAdmin } = require('../src/scripts/makeAdmin');
 
 const MAC = 'AAAAAAAAAA07';
 let user;
@@ -185,5 +186,22 @@ describe('the alert emails setting', () => {
     expect(bad.body.error.code).toBe('VALIDATION_ERROR');
     const empty = await api().patch('/api/v1/auth/me').set(user.auth).send({}).expect(400);
     expect(empty.body.error.code).toBe('VALIDATION_ERROR');
+  });
+});
+
+describe('when an admin moves a device to another owner', () => {
+  test('the new owner gets the email for the next alarm at once', async () => {
+    await publish(MAC, 'alarms', alarm('alarm_on', 1200));
+    await publish(MAC, 'alarms', alarm('alarm_off', 700));
+    await waitForMail(1);
+    const admin = await signUp('Admin');
+    await makeAdmin(admin.email);
+    const omar = await signUp('Omar');
+    const omarId = (await prisma.user.findUnique({ where: { email: omar.email } })).id;
+    await api().patch(`/api/v1/admin/devices/${MAC}`).set(admin.auth).send({ owner_id: omarId }).expect(200);
+    mailService.clearOutbox();
+    await publish(MAC, 'alarms', alarm('alarm_on', 1300));
+    const [mail] = await waitForMail(1);
+    expect(mail && mail.to).toBe(omar.email);
   });
 });

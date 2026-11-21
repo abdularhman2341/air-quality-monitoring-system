@@ -262,6 +262,17 @@ describe('devices', () => {
     expect((await lastAction()).details).toMatchObject({ name: { from: 'Kitchen', to: 'Garage' }, history_deleted: false });
   });
 
+  test('sending the values the device already has changes nothing and logs nothing', async () => {
+    const admin = await signUpAdmin();
+    const owner = await signUp();
+    await ownedDevice(owner);
+    const before = await prisma.adminAction.count();
+
+    await api().patch(`${ADMIN}/devices/${MAC}`).set(admin.auth).send({ name: 'Kitchen' }).expect(200);
+    expect(await prisma.adminAction.count()).toBe(before);
+    expect(await prisma.reading.count()).toBe(1);
+  });
+
   test('moving a device to another owner deletes its history', async () => {
     const admin = await signUpAdmin();
     const first = await signUp();
@@ -274,6 +285,7 @@ describe('devices', () => {
     expect((await lastAction()).details.owner).toEqual({ from: first.email, to: second.email });
 
     expect(await prisma.reading.count()).toBe(0);
+    expect((await prisma.device.findUnique({ where: { device_id: MAC } })).last_reading_at).toBeNull();
     await api().get(`/api/v1/devices/${MAC}`).set(first.auth).expect(404);
     await api().get(`/api/v1/devices/${MAC}`).set(second.auth).expect(200);
     expect((await lastAction()).details).toMatchObject({ history_deleted: true });
