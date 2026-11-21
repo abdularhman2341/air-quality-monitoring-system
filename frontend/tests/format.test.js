@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatPpm, formatDuration } from '../src/utils/format.js'
+import { formatPpm, formatDuration, isWarmingUp } from '../src/utils/format.js'
 
 // A fake translate function: returns the key and the values so we can check them.
 const t = (key, values) => `${key} ${JSON.stringify(values)}`
@@ -38,5 +38,23 @@ describe('formatDuration', () => {
 
   it('rounds milliseconds to the nearest second', () => {
     expect(formatDuration(59_600, t)).toBe('duration.ms {"m":1,"s":0}')
+  })
+})
+
+describe('isWarmingUp', () => {
+  it('is true for the first 24 readings after power-up (2 minutes at one reading every 5 s)', () => {
+    expect(isWarmingUp({ seq: 1 })).toBe(true)
+    expect(isWarmingUp({ seq: 24 })).toBe(true)
+  })
+
+  it('is false after the warm-up', () => {
+    expect(isWarmingUp({ seq: 25 })).toBe(false)
+    expect(isWarmingUp({ seq: 5000 })).toBe(false)
+  })
+
+  it('is false when there is no reading or no counter', () => {
+    expect(isWarmingUp(null)).toBe(false)
+    expect(isWarmingUp({ seq: null })).toBe(false)
+    expect(isWarmingUp({})).toBe(false)
   })
 })

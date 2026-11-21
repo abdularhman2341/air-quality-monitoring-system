@@ -75,3 +75,14 @@ describe('removing a device', () => {
     expect(res.body.total).toBe(0);
   });
 });
+
+describe('listing my devices', () => {
+  test('the latest reading includes seq, so the dashboard can show the warm-up', async () => {
+    const user = await signUp();
+    const code = await registerDevice(MAC);
+    await linkDevice(user, MAC, code);
+    await publish(MAC, 'readings', { seq: 7, lpg_ppm_est: 640, alarm_active: false, ts: new Date().toISOString() });
+    const res = await api().get('/api/v1/devices').set(user.auth).expect(200);
+    expect(res.body[0].latest).toMatchObject({ seq: 7, lpg_ppm_est: 640, alarm_active: false });
+  });
+});

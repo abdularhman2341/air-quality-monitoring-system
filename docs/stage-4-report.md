@@ -128,9 +128,9 @@ For bug fixes the team used a test-first rule from Sprint 3: a test that reprodu
 | Planned cards completed | 20 (100%) | 14 (100%) | 8 (80%) |
 | Cards added during the sprint and completed | 0 | 0 | 22 of 23 |
 | Velocity (cards completed) | 20 | 14 | 30 |
-| Pull requests merged into `develop` | 22 | 20 | 37 |
+| Pull requests merged into `develop` | 22 | 20 | 39 |
 
-Totals: 79 pull requests merged between 6 October and 21 November, 197 commits on `develop`.
+Totals: 81 pull requests merged between 6 October and 21 November, 197 commits on `develop`.
 
 Sprint 3 had the most work because the weekly mentor meetings added requirements (admin dashboard, OTP, third-party email) and acceptance testing found defects that had to be fixed before the end of the stage. Two planned cards were not completed: S3-01 was descoped (Section 3.3) and S3-05 is carried over to Stage 5 (Section 8).
 
@@ -174,6 +174,7 @@ Each sprint was reviewed in the weekly meetings with the mentor, where the team 
 - 11 November: no remarks.
 - 17 November: most remarks were on the frontend. Large files (some over 400 lines) must be split into components and modules, and functions should stay within 25 lines. The backend now has no file over 400 lines; splitting the large frontend pages is planned for Stage 5 (Section 8).
 - New account sign-up must use an emailed code and activate the account in one step (no separate confirmation afterwards). Built and deployed on 21 November (PR #82).
+- Last day: the dashboard shows a **Warming up** state for the first 2 minutes after the device powers up, when readings are not accurate yet and the device does not alarm (the reading counter `seq` starts again at every power-up).
 - **Descoped:** S3-01 (daily aggregation). The History page meets the need with the alerts list and the readings table filtered by 24 hours, 7 days or 30 days, plus CSV export.
 
 ---
@@ -318,7 +319,7 @@ GitHub Actions runs on every pull request and every push to `develop` ([runs](ht
 
 ### 6.3 Automated test results (21 November 2026)
 
-**Backend:** 253 tests in 17 files, all passing. 67 unit tests and 186 integration tests (Supertest against the real Express app and a real PostgreSQL test database).
+**Backend:** 254 tests in 17 files, all passing. 67 unit tests and 187 integration tests (Supertest against the real Express app and a real PostgreSQL test database).
 
 **Coverage** (measured on 21 November): 93.2% of lines, 91.9% of statements, 91.3% of functions, 79.7% of branches.
 
@@ -331,7 +332,7 @@ GitHub Actions runs on every pull request and every push to `develop` ([runs](ht
 | `login-limits.test.js` | 15 | Integration | Sign-in lock after 5 wrong passwords per email; limit per address |
 | `session-idle.test.js` | 5 | Integration | Session ends after 15 minutes without a request |
 | `logout-all.test.js` | 6 | Integration | Sign out of all devices with the current password |
-| `devices.test.js` | 5 | Integration | Pairing, wrong code, already linked, isolation between accounts (O3) |
+| `devices.test.js` | 6 | Integration | Pairing, wrong code, already linked, isolation between accounts (O3), the latest reading in the device list |
 | `ingestion.test.js` | 16 | Integration | MQTT messages: duplicates saved once, late readings keep their time, alerts open and close (also after a power cut), Last Will, devices with no owner (O1, O2, O3) |
 | `alert-emails.test.js` | 16 | Integration | Alert emails start and end, at most one per device every 10 minutes, the owner's switch |
 | `admin-api.test.js` | 22 | Integration | Admin access only, edits logged with old values, owner change deletes history |
@@ -342,7 +343,7 @@ GitHub Actions runs on every pull request and every push to `develop` ([runs](ht
 | `mqtt-ack.test.js` | 4 | Unit | A message is acknowledged only after it is saved (B1) |
 | `client-ip-config.test.js` | 5 | Unit | Reading the visitor address from the proxy header |
 
-**Frontend:** 38 unit tests (Vitest) in 5 files: password rules, number and time formatting, CSV export, the API client, and a check that every translation key used in the code exists in Arabic and English.
+**Frontend:** 41 unit tests (Vitest) in 5 files: password rules, number and time formatting, the sensor warm-up check, CSV export, the API client, and a check that every translation key used in the code exists in Arabic and English.
 
 **Mutation testing** on the Sprint 3 fixes: B1 5/5, sign-up code 7/7, R2/R3 8/8, R4 5/5, R5 5/5, #42 2/2 changes caught.
 

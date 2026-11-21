@@ -4,6 +4,15 @@ export const THRESHOLD_PPM = 1000
 // The gauge ends past the danger level, so readings above 1500 still move it.
 export const GAUGE_MAX_PPM = 1800
 
+// Must match the firmware: after power-up the sensor heats for WARMUP_MS
+// (120 s) with no alarm, and it reads every READ_INTERVAL_MS (5 s). seq
+// counts readings from power-up, so the first 24 are taken while it warms up.
+export const WARMUP_READINGS = 24
+
+export function isWarmingUp(reading) {
+  return Number.isInteger(reading?.seq) && reading.seq <= WARMUP_READINGS
+}
+
 // Always 0-9 digits with commas, in both languages.
 export function formatPpm(value) {
   return Math.round(value).toLocaleString('en-US')

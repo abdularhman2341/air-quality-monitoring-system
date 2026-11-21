@@ -1228,6 +1228,7 @@ components:
           type: object
           nullable: true
           properties:
+            seq: { type: integer, nullable: true, example: 7, description: 'Reading counter since the device powered up. The first 24 readings (2 minutes) are taken while the sensor warms up.' }
             lpg_ppm_est: { type: number, example: 120 }
             alarm_active: { type: boolean, example: false }
             reading_time: { type: string, format: date-time }
