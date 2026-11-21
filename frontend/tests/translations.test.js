@@ -27,6 +27,10 @@ function keysUsedInCode() {
 }
 
 describe('translations', () => {
+  it('the Arabic warm-up label uses a word whose marks do not cover the line below', () => {
+    expect(ar['dashboard.warming']).toBe('قيد التسخين')
+  })
+
   it('Arabic has every English key', () => {
     const missing = Object.keys(en).filter((key) => !(key in ar))
     expect(missing).toEqual([])
