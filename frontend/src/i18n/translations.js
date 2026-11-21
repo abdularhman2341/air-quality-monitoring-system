@@ -351,7 +351,7 @@ export const translations = {
     'dashboard.safe': 'آمن',
     'dashboard.alert': 'تنبيه',
     'dashboard.offline': 'غير متصل',
-    'dashboard.warming': 'جارٍ التسخين',
+    'dashboard.warming': 'قيد التسخين',
     'dashboard.safeMessage': 'لا يوجد تسرّب غاز',
     'dashboard.alertMessage': 'تم رصد تسرّب غاز',
     'dashboard.offlineMessage': 'هذا الحساس لا يرسل قراءات',
