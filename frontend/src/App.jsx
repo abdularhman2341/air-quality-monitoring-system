@@ -1,0 +1,40 @@
+import { Routes, Route, Navigate } from 'react-router-dom'
+import AppLayout from './components/AppLayout'
+import AuthLayout from './components/AuthLayout'
+import Dashboard from './pages/Dashboard'
+import History from './pages/History'
+import Login from './pages/Login'
+import Signup from './pages/Signup'
+import ForgotPassword from './pages/forgot/ForgotPassword'
+import AddSensor from './pages/AddSensor'
+import Profile from './pages/profile/Profile'
+import Admin from './pages/admin/Admin'
+import { ProtectedRoute, GuestRoute, AdminRoute } from './auth/ProtectedRoute'
+
+// GuestRoute pages are for signed-out users; ProtectedRoute pages need a
+// session. A new account goes straight to adding its first sensor.
+function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<GuestRoute><AuthLayout><Login /></AuthLayout></GuestRoute>} />
+      <Route
+        path="/signup"
+        element={<GuestRoute redirectTo="/add-sensor"><AuthLayout><Signup /></AuthLayout></GuestRoute>}
+      />
+      <Route
+        path="/forgot-password"
+        element={<GuestRoute><AuthLayout><ForgotPassword /></AuthLayout></GuestRoute>}
+      />
+      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/add-sensor" element={<AddSensor />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/history" element={<History />} />
+        <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
+}
+
+export default App

@@ -1,0 +1,108 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 2vw, 28px);
+  min-height: 72px;
+  padding: 0 clamp(16px, 3vw, 32px);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-inline-end: auto;
+  padding: 12px 0;
+  text-decoration: none;
+}
+
+.brand-name {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--primary);
+}
+
+.brand-tagline {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.nav {
+  display: flex;
+  align-self: stretch;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+  color: var(--text-muted);
+  box-shadow: inset 0 -3px 0 transparent;
+}
+
+.nav-link:hover {
+  color: var(--primary);
+}
+
+.nav-link.active {
+  color: var(--primary);
+  box-shadow: inset 0 -3px 0 var(--primary);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-weight: 600;
+  text-decoration: none;
+  background: var(--safe-bg);
+  color: var(--primary);
+}
+
+.avatar:hover {
+  color: var(--primary);
+  box-shadow: 0 0 0 2px var(--safe-border);
+}
+
+.header .btn {
+  height: 38px;
+  padding: 0 14px;
+}
+
+/* Phones: the links move to a second row that scrolls sideways, so the
+   header never runs off the screen (issue #44). */
+@media (max-width: 640px) {
+  .header {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+
+  .brand-tagline {
+    display: none;
+  }
+
+  .nav {
+    order: 3;
+    flex-basis: 100%;
+    min-height: 44px;
+    overflow-x: auto;
+  }
+}

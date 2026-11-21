@@ -1,0 +1,166 @@
+.add-sensor {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  align-items: start;
+  gap: 24px;
+  max-width: 960px;
+}
+
+.add-sensor-card {
+  padding: 28px;
+}
+
+.add-sensor-card h1 {
+  margin-bottom: 6px;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.add-sensor-card .subtitle {
+  margin-bottom: 24px;
+  color: var(--text-muted);
+}
+
+.field input.mono-input {
+  font-family: var(--font-mono);
+}
+
+.field input.code-input {
+  letter-spacing: 0.2em;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.form-actions .btn {
+  height: 46px;
+  padding: 0 20px;
+  font-size: 15px;
+}
+
+.add-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin: 0;
+  padding: 8px 4px;
+  list-style: none;
+}
+
+.add-steps li {
+  display: flex;
+  gap: 14px;
+}
+
+.step-number {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-weight: 600;
+  background: var(--safe-bg);
+  color: var(--primary);
+}
+
+.step-title {
+  margin-bottom: 2px;
+  font-weight: 600;
+}
+
+.step-body {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.add-sensor-side {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.my-sensors {
+  padding: 22px;
+}
+
+.my-sensors h2 {
+  margin-bottom: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.sensors-empty {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.sensor-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.sensor-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.sensor-row:first-child {
+  border-top: 0;
+}
+
+.sensor-info {
+  min-width: 0;
+}
+
+.sensor-name {
+  font-weight: 600;
+  color: var(--text-strong);
+  overflow-wrap: anywhere;
+}
+
+.sensor-mac {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.sensor-confirm {
+  flex-basis: 100%;
+  padding: 12px;
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius);
+  background: var(--danger-bg);
+}
+
+.sensor-confirm p {
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: var(--danger-ink);
+}
+
+.sensor-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.add-sensor-card .notice-warn {
+  margin-bottom: 20px;
+}

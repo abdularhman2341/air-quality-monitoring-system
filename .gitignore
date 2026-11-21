@@ -1,1 +1,5 @@
 *Zone.Identifier
+node_modules/
+.env
+npm-debug.log*
+coverage/

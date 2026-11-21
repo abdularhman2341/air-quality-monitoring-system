@@ -1,0 +1,208 @@
+// schema.prisma
+// Database schema for the LPG Leak Detection MVP.
+// Matches the data contract in docs/04-api-specifications.md.
+//
+// Field names are snake_case on purpose: they match the database columns
+// and the JSON field names in the API, so no mapping is needed.
+//
+// Some rules cannot be written in this file (CHECK constraints and a partial
+// unique index). They are added as SQL at the end of the init migration.
+// See prisma/README.md, "Custom constraints".
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ConnectionState {
+  online
+  offline
+
+  @@map("connection_state")
+}
+
+// What an account may do. Admins reach the admin routes under /api/v1/admin.
+// Named user_role in the database: "role" is also a PostgreSQL concept
+// (database roles), so the explicit name avoids confusion.
+enum Role {
+  user
+  admin
+
+  @@map("user_role")
+}
+
+// One account per person. Passwords are stored only as hashes.
+// Emails are stored in lowercase (the backend lowercases them before saving),
+// so @unique also blocks the same email with different letter case.
+// email_verified_at is null until the user types the code sent to the email.
+// pending_email is a new address the user asked for: it becomes the email
+// only after the code sent to it is typed.
+// alert_emails: email the owner when one of their devices starts or ends an alarm.
+model User {
+  id                Int       @id @default(autoincrement())
+  name              String    @db.VarChar(100)
+  email             String    @unique @db.VarChar(255)
+  password_hash     String
+  role              Role      @default(user)
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  email_verified_at DateTime? @db.Timestamptz(6)
+  pending_email     String?   @db.VarChar(255)
+  alert_emails      Boolean   @default(true)
+
+  devices           Device[]
+  sessions          Session[]
+  adminActions      AdminAction[]
+  verificationCodes VerificationCode[]
+
+  @@map("users")
+}
+
+// Sign-in sessions. A session is valid until expires_at, unless revoked_at is set
+// (for example on logout) or it has not been used for SESSION_IDLE_MINUTES.
+// Sessions are deleted when their user is deleted.
+model Session {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      Int
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  expires_at   DateTime  @db.Timestamptz(6)
+  revoked_at   DateTime? @db.Timestamptz(6)
+  last_used_at DateTime  @default(now()) @db.Timestamptz(6)
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("sessions")
+}
+
+// What a one-time code is for. One table holds every kind of code.
+enum CodePurpose {
+  reset_password
+  verify_email
+  change_email
+
+  @@map("code_purpose")
+}
+
+// One-time 6-digit codes sent by email. Only an HMAC of the code is stored,
+// so a copy of the database does not reveal the codes. A user has at most one
+// code per purpose: asking again replaces the old one. A code stops working
+// at expires_at or after 5 wrong attempts. Codes are deleted with their user.
+model VerificationCode {
+  id         Int         @id @default(autoincrement())
+  user_id    Int
+  purpose    CodePurpose
+  code_hash  String      @db.VarChar(64)
+  attempts   Int         @default(0)
+  created_at DateTime    @default(now()) @db.Timestamptz(6)
+  expires_at DateTime    @db.Timestamptz(6)
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, purpose])
+  @@map("verification_codes")
+}
+
+// One row per ESP32, identified by its Wi-Fi MAC address
+// (12 uppercase hex characters, e.g. A4CF123B9E01).
+// owner_id is null until a user links the device with its pairing code.
+model Device {
+  device_id         String          @id @db.Char(12)
+  owner_id          Int?
+  pairing_code_hash String
+  name              String?         @db.VarChar(100)
+  location          String?         @db.VarChar(150)
+  connection_state  ConnectionState @default(offline)
+  online_since      DateTime?       @db.Timestamptz(6)
+  last_reading_at   DateTime?       @db.Timestamptz(6)
+  created_at        DateTime        @default(now()) @db.Timestamptz(6)
+  // When the last "alarm started" email was sent, to send at most one every 10 minutes.
+  alert_email_at    DateTime?       @db.Timestamptz(6)
+
+  owner    User?     @relation(fields: [owner_id], references: [id], onDelete: SetNull)
+  readings Reading[]
+  alerts   Alert[]
+
+  @@index([owner_id])
+  @@map("devices")
+}
+
+// One row per MQTT message on aqms/devices/{mac}/readings.
+// lpg_ppm_est is an estimate whose accuracy has not been established.
+model Reading {
+  id             Int      @id @default(autoincrement())
+  device_id      String   @db.Char(12)
+  seq            Int?
+  sensor_raw_adc Int?
+  sensor_voltage Float?
+  rs_ro_ratio    Float?
+  lpg_ppm_est    Float
+  alarm_active   Boolean  @default(false)
+  reading_time   DateTime @db.Timestamptz(6) // device time (ts)
+  received_at    DateTime @default(now()) @db.Timestamptz(6) // server time
+
+  device Device @relation(fields: [device_id], references: [device_id], onDelete: Cascade)
+
+  // One reading per device per timestamp: QoS 1 may deliver a message twice.
+  // The backend inserts with createMany({ skipDuplicates: true }).
+  // Requires a valid device clock (firmware waits for NTP; backend falls back
+  // to received_at when ts is far from server time).
+  // Also serves dashboard and history queries (one device, by time).
+  @@unique([device_id, reading_time])
+  @@map("readings")
+}
+
+// One row per alarm episode (alarm_on until alarm_off).
+// ended_at stays null while the alarm is still active.
+model Alert {
+  id               Int       @id @default(autoincrement())
+  device_id        String    @db.Char(12)
+  started_at       DateTime  @db.Timestamptz(6)
+  ended_at         DateTime? @db.Timestamptz(6)
+  peak_lpg_ppm_est Float
+  threshold_ppm    Float
+  // True when the "alarm started" email went out; only then is the end emailed too.
+  email_sent       Boolean   @default(false)
+
+  device Device @relation(fields: [device_id], references: [device_id], onDelete: Cascade)
+
+  @@index([device_id, started_at])
+  @@map("alerts")
+}
+
+// One row per change made by an admin (or by the make-admin script, where
+// admin_id is null). admin_email keeps who did it after that account is deleted,
+// and target_label keeps a readable name for the target (an email, a device name).
+model AdminAction {
+  id          Int      @id @default(autoincrement())
+  admin_id    Int?
+  admin_email String?  @db.VarChar(255)
+  action      String   @db.VarChar(50)
+  target_type String   @db.VarChar(20)
+  target_id   String   @db.VarChar(50)
+  target_label String? @db.VarChar(255)
+  details     Json?
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  admin User? @relation(fields: [admin_id], references: [id], onDelete: SetNull)
+
+  @@index([created_at])
+  @@map("admin_actions")
+}
+
+// One row per counted try (a failed sign-in, a password reset request...).
+// scope says what is counted and key for whom (an email or an address).
+// Rows older than a day are deleted when a new one is saved.
+model RateLimitHit {
+  id         Int      @id @default(autoincrement())
+  scope      String   @db.VarChar(30)
+  key        String   @db.VarChar(255)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([scope, key, created_at])
+  @@index([created_at])
+  @@map("rate_limit_hits")
+}

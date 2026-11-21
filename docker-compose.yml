@@ -1,0 +1,23 @@
+services:
+  db:
+    image: postgres:16
+    container_name: aqms-db
+    environment:
+      POSTGRES_USER: aqms
+      POSTGRES_PASSWORD: aqms_dev_password
+      POSTGRES_DB: aqms
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: aqms-mqtt
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+
+volumes:
+  db_data:
