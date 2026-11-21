@@ -9,15 +9,6 @@ const {
 // There is no try/catch: Express 5 passes a rejected promise to errorHandler.
 // req.body is undefined when no JSON was sent, hence `req.body || {}`.
 
-async function register(req, res) {
-  const body = req.body || {};
-  const name = requireString(body.name, 'name', { max: 100 });
-  const email = requireEmail(body.email);
-  const password = requirePassword(body.password);
-  const user = await authService.register(name, email, password);
-  res.status(201).json({ user });
-}
-
 // The client address feeds the per-address login limit (AuthService.login).
 async function login(req, res) {
   const body = req.body || {};
@@ -76,17 +67,6 @@ async function changeEmail(req, res) {
   res.json(user);
 }
 
-async function verifyEmail(req, res) {
-  const code = requireCode((req.body || {}).code);
-  const user = await authService.verifyEmail(req.userId, code);
-  res.json(user);
-}
-
-async function resendVerification(req, res) {
-  await authService.resendVerification(req.userId);
-  res.status(204).end();
-}
-
 async function confirmEmailChange(req, res) {
   const code = requireCode((req.body || {}).code);
   const user = await authService.confirmEmailChange(req.userId, code);
@@ -141,6 +121,6 @@ async function deleteMe(req, res) {
 }
 
 module.exports = {
-  register, login, logout, logoutAll, me, updateMe, changeEmail, changePassword, forgotPassword, resetPassword, deleteMe,
-  verifyEmail, resendVerification, confirmEmailChange, resendEmailChange, cancelEmailChange,
+  login, logout, logoutAll, me, updateMe, changeEmail, changePassword, forgotPassword, resetPassword, deleteMe,
+  confirmEmailChange, resendEmailChange, cancelEmailChange,
 };

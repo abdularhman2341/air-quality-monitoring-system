@@ -49,11 +49,13 @@ paths:
   /auth/register:
     post:
       tags: [Auth]
-      summary: Create an account
+      summary: Create an account (step 1 of 2)
       description: >
-        The account works at once. A 6-digit code is emailed to verify the address
-        (`POST /auth/verify-email`); until then `email_verified` is false and the
-        account cannot link a device.
+        Saves the account inactive and emails a 6-digit code. The account cannot sign
+        in until the code is typed (`POST /auth/register/confirm`). Signing up again
+        with an email that was never activated replaces the name and password. One
+        address can sign up 10 times in 15 minutes (needs CLIENT_IP_HEADER). If the
+        email cannot be sent the answer is still 202; ask for a new code.
       requestBody:
         required: true
         content:
@@ -66,20 +68,79 @@ paths:
                 email: { type: string, format: email, example: demo@aqms.com }
                 password: { type: string, minLength: 8, maxLength: 72, description: 'At most 72 bytes in UTF-8. Arabic letters use 2 bytes each and emoji use 4.', example: Demo12345 }
       responses:
-        '201':
-          description: Account created
+        '202':
+          description: Account saved inactive, code emailed
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  user: { $ref: '#/components/schemas/User' }
+                  email: { type: string, example: demo@aqms.com }
         '400': { $ref: '#/components/responses/ValidationError' }
         '409':
-          description: EMAIL_TAKEN
+          description: EMAIL_TAKEN (an active account uses this email)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/TooManyAttempts' }
+
+  /auth/register/confirm:
+    post:
+      tags: [Auth]
+      summary: Activate the account with the emailed code and sign in (step 2 of 2)
+      description: >
+        Same code rules as password reset (15 minutes, 5 tries, works once). One answer
+        for every failure, including an email with no inactive account. One address
+        gets 20 tries in 15 minutes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code]
+              properties:
+                email: { type: string, format: email, example: demo@aqms.com }
+                code: { type: string, example: '482913' }
+      responses:
+        '200':
+          description: Activated and signed in. A new session is stored in the database.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  user: { $ref: '#/components/schemas/User' }
+        '400':
+          description: VALIDATION_ERROR or INVALID_CODE
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/TooManyAttempts' }
+
+  /auth/register/resend:
+    post:
+      tags: [Auth]
+      summary: Email a new activation code
+      description: >
+        Always 204, whether or not the email has an inactive account. At most one code
+        a minute; a new code replaces the old one. One address can ask 10 times in 15
+        minutes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email, example: demo@aqms.com }
+      responses:
+        '204':
+          description: Done (the same answer for every email)
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyAttempts' }
 
   /auth/login:
     post:
@@ -89,6 +150,8 @@ paths:
         Failed tries are counted. After 5 for one email, or 20 from one address, in 15
         minutes, the answer is 429 even for the right password. A password reset
         unlocks the email. The limit per address needs CLIENT_IP_HEADER to be set.
+        An account that was never activated gets 403 EMAIL_NOT_VERIFIED after the right
+        password, and a new code is emailed (at most one a minute).
       requestBody:
         required: true
         content:
@@ -112,6 +175,11 @@ paths:
         '400': { $ref: '#/components/responses/ValidationError' }
         '401':
           description: INVALID_CREDENTIALS
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '403':
+          description: EMAIL_NOT_VERIFIED (type the emailed code at /auth/register/confirm)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -289,54 +357,6 @@ paths:
               schema: { $ref: '#/components/schemas/User' }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
-  /auth/verify-email:
-    post:
-      tags: [Auth]
-      summary: Verify my email with the code
-      description: >
-        The code is emailed when the account is created. Same code rules as password
-        reset (15 minutes, 5 tries, works once). An account that is already verified
-        gets 200 without the code being checked.
-      security: [{ bearerAuth: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [code]
-              properties:
-                code: { type: string, example: '482913' }
-      responses:
-        '200':
-          description: The user, with email_verified true
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/User' }
-        '400':
-          description: VALIDATION_ERROR or INVALID_CODE
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-
-  /auth/verify-email/resend:
-    post:
-      tags: [Auth]
-      summary: Send me a new verification code
-      security: [{ bearerAuth: [] }]
-      responses:
-        '204':
-          description: A new code was sent. The old one no longer works.
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '409':
-          description: EMAIL_ALREADY_VERIFIED
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '429': { $ref: '#/components/responses/CodeRecentlySent' }
-        '502': { $ref: '#/components/responses/MailNotSent' }
-
   /auth/me/password:
     patch:
       tags: [Auth]
@@ -498,7 +518,6 @@ paths:
     post:
       tags: [Devices]
       summary: Link a device with its pairing code
-      description: Needs a verified email (403 EMAIL_NOT_VERIFIED otherwise).
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -520,11 +539,6 @@ paths:
               schema: { $ref: '#/components/schemas/Device' }
         '400': { $ref: '#/components/responses/ValidationError' }
         '401': { $ref: '#/components/responses/Unauthorized' }
-        '403':
-          description: EMAIL_NOT_VERIFIED (verify the email first; checked before the pairing code)
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
         '404':
           description: DEVICE_NOT_FOUND (wrong MAC or pairing code)
           content:
@@ -1194,7 +1208,7 @@ components:
         id: { type: string, example: '1' }
         name: { type: string, example: Demo User }
         email: { type: string, example: demo@aqms.com }
-        email_verified: { type: boolean, description: False until the code sent to the email is typed. Needed to link a device. }
+        email_verified: { type: boolean, description: False until the code sent to the email is typed. An account that is not verified cannot sign in. }
         pending_email: { type: string, nullable: true, description: A new email waiting for its code }
         alert_emails: { type: boolean, description: "Gas alert emails are on (sent only to a verified email, at most one per device every 10 minutes, plus one when that alarm ends)" }
         role: { type: string, enum: [user, admin] }

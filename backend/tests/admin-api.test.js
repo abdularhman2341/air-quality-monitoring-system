@@ -117,7 +117,8 @@ describe('users', () => {
       email: { from: user.email, to: 'new@test.local' },
       role: { from: 'user', to: 'admin' },
     });
-    await api().get(`${ADMIN}/actions`).set(user.auth).expect(200);
+    // The email changed, so the account must be activated again: its session ended.
+    await api().get(`${ADMIN}/actions`).set(user.auth).expect(401);
   });
 
   test('refuses a taken email, a wrong role and an empty body', async () => {

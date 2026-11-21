@@ -114,8 +114,8 @@ export const api = {
   confirmEmailChange: (code) => request('/auth/me/email/confirm', { method: 'POST', body: { code } }),
   resendEmailChange: () => request('/auth/me/email/resend', { method: 'POST' }),
   cancelEmailChange: () => request('/auth/me/email/pending', { method: 'DELETE' }),
-  verifyEmail: (code) => request('/auth/verify-email', { method: 'POST', body: { code } }),
-  resendVerification: () => request('/auth/verify-email/resend', { method: 'POST' }),
+  confirmSignup: (email, code) => request('/auth/register/confirm', { method: 'POST', body: { email, code } }),
+  resendSignupCode: (email) => request('/auth/register/resend', { method: 'POST', body: { email } }),
   deleteAccount: (currentPassword) =>
     request('/auth/me', { method: 'DELETE', body: { current_password: currentPassword } }),
   listDevices: () => request('/devices'),

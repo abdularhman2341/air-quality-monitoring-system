@@ -3,16 +3,13 @@ const deviceController = require('../controllers/deviceController');
 const readingController = require('../controllers/readingController');
 const alertController = require('../controllers/alertController');
 const requireAuth = require('../middlewares/requireAuth');
-const requireVerifiedEmail = require('../middlewares/requireVerifiedEmail');
 
 const router = Router();
 
 router.use(requireAuth);
 
 router.get('/', deviceController.list);
-// Only linking needs a verified email; an unverified user can still see
-// and manage what they already have.
-router.post('/', requireVerifiedEmail, deviceController.link);
+router.post('/', deviceController.link);
 router.get('/:mac', deviceController.get);
 router.patch('/:mac', deviceController.update);
 router.delete('/:mac', deviceController.unlink);

@@ -11,40 +11,22 @@ const {
   passwordResetEmail, passwordChangedEmail, emailVerificationEmail, emailChangeEmail, emailChangedEmail,
 } = require('../utils/emails');
 const { jwtSecret, tokenExpiry, sessionIdleMinutes } = require('../config/auth');
+const {
+  invalidCode, tooManyAttempts, codeRecentlySent, emailNotVerified,
+} = require('../errors/authErrors');
 
 function unauthorized(code, message) {
   return new HttpError(401, code, message);
 }
 
-function invalidCode() {
-  return new HttpError(400, 'INVALID_CODE', 'The code is wrong or has expired. Ask for a new one.');
-}
-
-function tooManyAttempts() {
-  return new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait 15 minutes and try again.');
-}
-
-function codeRecentlySent() {
-  return new HttpError(429, 'CODE_RECENTLY_SENT', 'A code was sent less than a minute ago. Wait a moment before asking again.');
-}
-
 class AuthService {
-  // The account works at once. The code sent here only unlocks linking a
-  // device, so a failed email must not fail the sign-up: the user can ask
-  // for a new code from the banner.
-  async register(name, email, password) {
-    const user = await User.register(name, email, password);
-    const code = await VerificationCode.issue(user.id, 'verify_email');
-    this.sendInBackground(user.email, emailVerificationEmail(code, VerificationCode.CODE_MINUTES), 'email verification code');
-    return user;
-  }
-
   // Every try is counted before the password is looked at, for the address
   // (when known) and for the email, and a try that signs in is taken back.
   // After 5 wrong tries for an email or 20 from an address in 15 minutes the
   // answer is 429 even for the right password, so guessing gains nothing.
   // An email with no account is counted the same way, so the answer does not
-  // show who is registered.
+  // show who is registered. An account that was never activated gets 403 and
+  // a new code, but only after the right password.
   async login(email, password, ip = null) {
     const addressHit = ip ? await RateLimit.take('login_address', ip, limits.loginPerAddress, limits.windowMinutes) : undefined;
     if (addressHit === null) {
@@ -61,8 +43,21 @@ class AuthService {
     }
     await RateLimit.release(addressHit);
     await RateLimit.clear('login_email', email);
+    if (!user.isEmailVerified()) {
+      await this.sendActivationCode(user);
+      throw emailNotVerified();
+    }
     const token = await this.generateToken(user.id);
     return { token, user };
+  }
+
+  // At most one code a minute (VerificationCode.issue); the email goes out
+  // after the response, so its time says nothing about the account.
+  async sendActivationCode(user) {
+    const code = await VerificationCode.issue(user.id, 'verify_email');
+    if (code) {
+      this.sendInBackground(user.email, emailVerificationEmail(code, VerificationCode.CODE_MINUTES), 'email verification code');
+    }
   }
 
   async generateToken(userId) {
@@ -125,36 +120,6 @@ class AuthService {
       throw new HttpError(403, 'WRONG_PASSWORD', 'Current password is incorrect.');
     }
     return user;
-  }
-
-  async verifyEmail(userId, code) {
-    const user = await this.getUser(userId);
-    if (user.isEmailVerified()) {
-      return user;
-    }
-    const done = await prisma.$transaction(async (tx) => {
-      if (!(await VerificationCode.consume(tx, user.id, 'verify_email', code))) {
-        return false;
-      }
-      await user.markEmailVerified(tx);
-      return true;
-    });
-    if (!done) {
-      throw invalidCode();
-    }
-    return user;
-  }
-
-  async resendVerification(userId) {
-    const user = await this.getUser(userId);
-    if (user.isEmailVerified()) {
-      throw new HttpError(409, 'EMAIL_ALREADY_VERIFIED', 'This email is already verified.');
-    }
-    const code = await VerificationCode.issue(user.id, 'verify_email');
-    if (!code) {
-      throw codeRecentlySent();
-    }
-    await this.sendCodeNow(user, 'verify_email', user.email, emailVerificationEmail(code, VerificationCode.CODE_MINUTES), 'email verification code');
   }
 
   // The email does not change here. The new address is kept as pending_email
