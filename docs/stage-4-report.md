@@ -1,6 +1,6 @@
 # Stage 4 Report: MVP Development and Execution
 
-**Team:** SAU-0226-Team 15  
+**Team:** SensorX  
 **Project:** Air Quality Monitoring System - LPG Leak Detection MVP  
 **Stage dates:** 11 October - 21 November 2026  
 **Team:** Abdulrahman Asiri (Backend, SCM), Khalid Aloraini (Frontend and design), Abdulmalik Alaqeel (Hardware, Database, Project Manager). QA is shared: every test task names a member who did not build the feature as its QA reviewer.
