@@ -2,105 +2,58 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
-import { passwordErrorKey } from '../utils/password'
+import { useRequest } from '../hooks/useRequest'
+import { usePasswordPair } from '../hooks/usePasswordPair'
 import ActivateAccount from '../components/ActivateAccount'
+import Field from '../components/form/Field'
+import FormError from '../components/form/FormError'
+import NewPasswordFields from '../components/form/NewPasswordFields'
+import SubmitButton from '../components/form/SubmitButton'
 
-function Signup() {
+// Password rules are checked here first, so the common mistakes get a clear
+// message without a request. The backend checks them again. On success the
+// page shows the code step; after the code GuestRoute moves on to /add-sensor.
+function useSignup() {
+  const { register } = useAuth()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirm, setConfirm] = useState('')
-  const [passwordError, setPasswordError] = useState(null)
-  const [error, setError] = useState(null)
-  const [submitting, setSubmitting] = useState(false)
   const [sentTo, setSentTo] = useState(null)
-  const { register } = useAuth()
-  const { t, errorText } = useLanguage()
+  const pair = usePasswordPair()
+  const request = useRequest()
 
-  // Password rules are checked here first, so the common mistakes get a clear
-  // message without a request. The backend checks them again. On success the
-  // page shows the code step; after the code GuestRoute moves on to /add-sensor.
-  async function handleSubmit(e) {
+  function handleSubmit(e) {
     e.preventDefault()
-    setError(null)
-    const key = passwordErrorKey(password, confirm)
-    if (key) {
-      setPasswordError(key)
-      return
-    }
-    setSubmitting(true)
-    try {
-      const { email: sent } = await register(name, email, password)
+    request.setError(null)
+    if (!pair.check()) return
+    request.run(async () => {
+      const { email: sent } = await register(name, email, pair.password)
       setSentTo(sent)
-    } catch (err) {
-      setError(err)
-    }
-    setSubmitting(false)
+    })
   }
 
-  if (sentTo) {
-    return <ActivateAccount email={sentTo} onBack={() => setSentTo(null)} />
-  }
+  return { name, setName, email, setEmail, pair, sentTo, setSentTo, handleSubmit, ...request }
+}
 
-  const passwordInvalid = passwordError === 'signup.passwordTooShort' || passwordError === 'signup.passwordTooLong'
+function Signup() {
+  const { t } = useLanguage()
+  const form = useSignup()
+
+  if (form.sentTo) {
+    return <ActivateAccount email={form.sentTo} onBack={() => form.setSentTo(null)} />
+  }
 
   return (
     <>
       <h2>{t('signup.title')}</h2>
       <p className="subtitle">{t('signup.subtitle')}</p>
-      <form className="form" onSubmit={handleSubmit}>
-        <label className="field">
-          {t('signup.name')}
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            autoComplete="name"
-            maxLength={100}
-            required
-          />
-        </label>
-        <label className="field">
-          {t('login.email')}
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            dir="ltr"
-            required
-          />
-        </label>
-        <label className="field">
-          {t('login.password')}
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => { setPassword(e.target.value); setPasswordError(null) }}
-            autoComplete="new-password"
-            aria-invalid={passwordInvalid}
-            aria-describedby={passwordInvalid ? 'password-hint password-error' : 'password-hint'}
-            required
-          />
-          <span className="field-hint" id="password-hint">{t('signup.passwordHint')}</span>
-        </label>
-        <label className="field">
-          {t('signup.confirmPassword')}
-          <input
-            type="password"
-            value={confirm}
-            onChange={(e) => { setConfirm(e.target.value); setPasswordError(null) }}
-            autoComplete="new-password"
-            aria-invalid={passwordError === 'signup.passwordMismatch'}
-            aria-describedby={passwordError === 'signup.passwordMismatch' ? 'password-error' : undefined}
-            required
-          />
-        </label>
-        {passwordError && <p className="form-error" role="alert" id="password-error">{t(passwordError)}</p>}
-        {error && <p className="form-error" role="alert">{errorText(error)}</p>}
-        <button type="submit" className="btn btn-primary" disabled={submitting}>
-          {submitting ? t('signup.submitting') : t('signup.submit')}
-        </button>
+      <form className="form" onSubmit={form.handleSubmit}>
+        <Field label={t('signup.name')} type="text" value={form.name} onChange={form.setName}
+          autoComplete="name" maxLength={100} required />
+        <Field label={t('login.email')} type="email" value={form.email} onChange={form.setEmail}
+          autoComplete="email" dir="ltr" required />
+        <NewPasswordFields pair={form.pair} label={t('login.password')} />
+        <FormError error={form.error} />
+        <SubmitButton busy={form.busy} label={t('signup.submit')} busyLabel={t('signup.submitting')} />
       </form>
       <p className="auth-switch">
         {t('signup.haveAccount')} <Link to="/login">{t('signup.signIn')}</Link>

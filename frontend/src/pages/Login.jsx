@@ -2,77 +2,66 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
+import { useRequest } from '../hooks/useRequest'
 import ActivateAccount from '../components/ActivateAccount'
+import Field from '../components/form/Field'
+import FormError from '../components/form/FormError'
+import SubmitButton from '../components/form/SubmitButton'
 
-function Login() {
-  const location = useLocation()
-  const passwordReset = Boolean(location.state?.passwordReset)
-  const [email, setEmail] = useState(location.state?.email || '')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState(null)
-  const [submitting, setSubmitting] = useState(false)
-  const [inactive, setInactive] = useState(false)
+// On success nothing else happens here: the user is set, and GuestRoute
+// moves on to the page they came from, so the button stays busy. An account
+// that was never activated gets a new code by email (403 EMAIL_NOT_VERIFIED),
+// and the page shows the code step instead of an error.
+function useLogin(initialEmail) {
   const { login } = useAuth()
-  const { t, errorText } = useLanguage()
+  const [email, setEmail] = useState(initialEmail)
+  const [password, setPassword] = useState('')
+  const request = useRequest()
+  const inactive = request.error?.code === 'EMAIL_NOT_VERIFIED'
 
-  // On success nothing else happens here: the user is set, and GuestRoute
-  // moves on to the page they came from. submitting stays true because this
-  // page is leaving. An account that was never activated gets a new code by
-  // email (403 EMAIL_NOT_VERIFIED), and the page shows the code step.
-  async function handleSubmit(e) {
+  function handleSubmit(e) {
     e.preventDefault()
-    setError(null)
-    setSubmitting(true)
-    try {
-      await login(email, password)
-    } catch (err) {
-      setInactive(err.code === 'EMAIL_NOT_VERIFIED')
-      setError(err.code === 'EMAIL_NOT_VERIFIED' ? null : err)
-      setSubmitting(false)
-    }
+    request.run(() => login(email, password), { stayBusy: true })
   }
 
-  if (inactive) {
-    return <ActivateAccount email={email} onBack={() => setInactive(false)} />
+  return { email, setEmail, password, setPassword, handleSubmit, inactive, ...request }
+}
+
+// The reset page sends the user here with the email and a notice.
+function Login() {
+  const location = useLocation()
+  const { t } = useLanguage()
+  const form = useLogin(location.state?.email || '')
+
+  if (form.inactive) {
+    return <ActivateAccount email={form.email} onBack={() => form.setError(null)} />
   }
 
   return (
     <>
       <h2>{t('login.title')}</h2>
       <p className="subtitle">{t('login.subtitle')}</p>
-      {passwordReset && <p className="form-success" role="status">{t('login.passwordReset')}</p>}
-      <form className="form" onSubmit={handleSubmit}>
-        <label className="field">
-          {t('login.email')}
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            dir="ltr"
-            required
-          />
-        </label>
-        <label className="field">
-          {t('login.password')}
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            required
-          />
-        </label>
-        <Link className="auth-forgot" to="/forgot-password">{t('login.forgot')}</Link>
-        {error && <p className="form-error" role="alert">{errorText(error)}</p>}
-        <button type="submit" className="btn btn-primary" disabled={submitting}>
-          {submitting ? t('login.submitting') : t('login.submit')}
-        </button>
-      </form>
+      {location.state?.passwordReset && <p className="form-success" role="status">{t('login.passwordReset')}</p>}
+      <LoginForm form={form} />
       <p className="auth-switch">
         {t('login.noAccount')} <Link to="/signup">{t('login.createOne')}</Link>
       </p>
     </>
+  )
+}
+
+function LoginForm({ form }) {
+  const { t } = useLanguage()
+  return (
+    <form className="form" onSubmit={form.handleSubmit}>
+      <Field label={t('login.email')} type="email" value={form.email} onChange={form.setEmail}
+        autoComplete="email" dir="ltr" required />
+      <Field label={t('login.password')} type="password" value={form.password} onChange={form.setPassword}
+        autoComplete="current-password" required />
+      <Link className="auth-forgot" to="/forgot-password">{t('login.forgot')}</Link>
+      <FormError error={form.error} />
+      <SubmitButton busy={form.busy} label={t('login.submit')} busyLabel={t('login.submitting')} />
+    </form>
   )
 }
 

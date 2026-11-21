@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderPage, apiError } from './setup'
+import { renderPage, apiError, html } from './setup'
 import Profile from '../../src/pages/profile/Profile'
 
 const auth = vi.hoisted(() => ({ current: null }))
@@ -40,12 +40,12 @@ afterEach(cleanup)
 describe('Profile page', () => {
   it('renders the same markup in English', () => {
     const { container } = renderPage(<Profile />)
-    expect(container.innerHTML).toMatchSnapshot()
+    expect(html(container)).toMatchSnapshot()
   })
 
   it('renders the same markup in Arabic', () => {
     const { container } = renderPage(<Profile />, { lang: 'ar' })
-    expect(container.innerHTML).toMatchSnapshot()
+    expect(html(container)).toMatchSnapshot()
   })
 
   it('saves a new name and shows a toast', async () => {
@@ -82,7 +82,7 @@ describe('Profile page', () => {
     const user = userEvent.setup()
     const { container } = renderPage(<Profile />)
     await user.click(screen.getByRole('button', { name: 'Change' }))
-    expect(container.querySelector('.profile-subform').outerHTML).toMatchSnapshot()
+    expect(html(container.querySelector('.profile-subform'), { outer: true })).toMatchSnapshot()
     await user.type(screen.getByLabelText('New email'), ' SARA@example.com')
     await user.type(screen.getAllByLabelText('Current password')[0], 'secret123')
     await user.click(screen.getByRole('button', { name: 'Save email' }))
@@ -115,7 +115,7 @@ describe('Profile page', () => {
     auth.current = fakeAuth({ pending_email: 'new@example.com' })
     const user = userEvent.setup()
     const { container } = renderPage(<Profile />)
-    expect(container.querySelector('.pending-email').outerHTML).toMatchSnapshot()
+    expect(html(container.querySelector('.pending-email'), { outer: true })).toMatchSnapshot()
     expect(screen.queryByRole('button', { name: 'Change' })).toBeNull()
     await user.click(container.querySelector('.pending-email-cancel'))
     expect(auth.current.cancelEmailChange).toHaveBeenCalled()
@@ -158,7 +158,7 @@ describe('Profile page', () => {
     const user = userEvent.setup()
     const { container } = renderPage(<Profile />)
     await user.click(screen.getByRole('button', { name: 'Change password…' }))
-    expect(section('Password').outerHTML).toMatchSnapshot()
+    expect(html(section('Password'), { outer: true })).toMatchSnapshot()
     const form = container.querySelectorAll('.profile-subform')[0]
     const [current, next, confirm] = form.querySelectorAll('input')
     await user.type(current, 'old-pass-1')
@@ -204,7 +204,7 @@ describe('Profile page', () => {
     const user = userEvent.setup()
     renderPage(<Profile />)
     await user.click(screen.getByRole('button', { name: 'Sign out of all devices…' }))
-    expect(section('Sign out of all devices').outerHTML).toMatchSnapshot()
+    expect(html(section('Sign out of all devices'), { outer: true })).toMatchSnapshot()
     await user.type(section('Sign out of all devices').querySelector('input'), 'secret123')
     await user.click(screen.getByRole('button', { name: 'Sign out everywhere' }))
     expect(auth.current.logoutAll).toHaveBeenCalledWith('secret123')
@@ -242,7 +242,7 @@ describe('Profile page', () => {
     const user = userEvent.setup()
     const { container } = renderPage(<Profile />)
     await user.click(screen.getByRole('button', { name: 'Delete account…' }))
-    expect(container.querySelector('.danger-zone').outerHTML).toMatchSnapshot()
+    expect(html(container.querySelector('.danger-zone'), { outer: true })).toMatchSnapshot()
     await user.type(container.querySelector('.danger-zone input'), 'secret123')
     await user.click(screen.getByRole('button', { name: 'Delete permanently' }))
     expect(auth.current.deleteAccount).toHaveBeenCalledWith('secret123')
