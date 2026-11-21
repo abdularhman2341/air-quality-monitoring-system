@@ -136,6 +136,11 @@
   background: var(--offline-bg);
 }
 
+.hero-warming {
+  border-color: var(--warn-border);
+  background: var(--warn-bg);
+}
+
 .hero-device {
   display: inline-flex;
   align-items: center;

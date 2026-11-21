@@ -89,7 +89,7 @@ class Device extends BaseModel {
   static async withLatest(row) {
     const latest = await prisma.reading.findFirst({
       where: { device_id: row.device_id },
-      select: { lpg_ppm_est: true, alarm_active: true, reading_time: true },
+      select: { seq: true, lpg_ppm_est: true, alarm_active: true, reading_time: true },
       orderBy: { reading_time: 'desc' },
     });
     return new Device({ ...row, ...latest });
@@ -338,6 +338,17 @@ class Device extends BaseModel {
   // estimate_validated is always false for now: lpg_ppm_est is an estimate
   // until reference testing is done, and the dashboard labels it so (stage 3
   // report, risk R1).
+  // seq counts readings from power-up; the dashboard uses it to show that
+  // the sensor is still warming up (the first 2 minutes).
+  latestReading() {
+    return {
+      seq: this.seq ?? null,
+      lpg_ppm_est: Number(this.lpg_ppm_est),
+      alarm_active: this.alarm_active,
+      reading_time: this.reading_time,
+    };
+  }
+
   toJSON() {
     return {
       device_id: this.device_id,
@@ -346,9 +357,7 @@ class Device extends BaseModel {
       location: this.location,
       connection_state: this.connection_state,
       last_reading_at: this.last_reading_at,
-      latest: this.reading_time
-        ? { lpg_ppm_est: Number(this.lpg_ppm_est), alarm_active: this.alarm_active, reading_time: this.reading_time }
-        : null,
+      latest: this.reading_time ? this.latestReading() : null,
       estimate_validated: false,
     };
   }
