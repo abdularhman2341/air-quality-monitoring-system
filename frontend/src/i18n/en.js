@@ -85,6 +85,7 @@ const en = {
   'dashboard.alarmSince': 'Started {time} · peak {ppm} ppm',
   'dashboard.noAlerts': 'No active alerts',
   'dashboard.allNormal': 'Everything looks normal.',
+  'dashboard.alertsUnknown': 'Alert status unknown',
   'dashboard.viewHistory': 'View history and alerts',
   'dashboard.recentReadings': 'Recent Readings',
   'dashboard.lastCount': 'Last {count} readings',
