@@ -163,6 +163,11 @@
   letter-spacing: -0.01em;
 }
 
+/* Arabic marks above and below the letters need room, or they overlap the next line. */
+[dir='rtl'] .hero-word {
+  line-height: 1.25;
+}
+
 .hero-message {
   margin-bottom: 6px;
   font-size: 18px;
