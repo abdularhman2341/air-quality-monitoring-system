@@ -32,6 +32,21 @@ describe('readings', () => {
     expect(await prisma.reading.count()).toBe(0);
   });
 
+  test('a reading that waited 30 minutes at the broker keeps its real time', async () => {
+    const ts = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    await publish(MAC, 'readings', { seq: 1, lpg_ppm_est: 1, alarm_active: false, ts });
+    const reading = await prisma.reading.findFirst();
+    expect(reading.reading_time.toISOString()).toBe(ts);
+  });
+
+  test('a late message delivered twice is saved once', async () => {
+    const message = { seq: 7, lpg_ppm_est: 1, alarm_active: false, ts: new Date(Date.now() - 30 * 60 * 1000).toISOString() };
+    await publish(MAC, 'readings', message);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await publish(MAC, 'readings', message);
+    expect(await prisma.reading.count()).toBe(1);
+  });
+
   test('a device clock far from server time falls back to the server time', async () => {
     await publish(MAC, 'readings', { lpg_ppm_est: 1, alarm_active: false, ts: '1970-01-01T00:00:00Z' });
     const reading = await prisma.reading.findFirst();
@@ -41,6 +56,13 @@ describe('readings', () => {
 
 describe('alerts', () => {
   const alarm = (event, ppm) => ({ event, lpg_ppm_est: ppm, threshold_ppm: 1000, ts: now() });
+
+  test('an alarm that waited 30 minutes keeps its real start time', async () => {
+    const ts = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    await publish(MAC, 'alarms', { ...alarm('alarm_on', 1200), ts });
+    const alert = await prisma.alert.findFirst();
+    expect(alert.started_at.toISOString()).toBe(ts);
+  });
 
   test('a repeated alarm_on does not open a second alert', async () => {
     await publish(MAC, 'alarms', alarm('alarm_on', 1200));
