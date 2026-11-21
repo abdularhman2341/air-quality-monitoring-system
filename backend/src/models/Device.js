@@ -32,6 +32,20 @@ const PAIRING_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 // Prisma's error code for a duplicate key.
 const UNIQUE_VIOLATION = 'P2002';
 
+// The fields in changes whose value differs from the device, and a
+// { from, to } entry for each one for the admin action log.
+function changedFields(device, changes) {
+  const data = {};
+  const details = {};
+  for (const [field, value] of Object.entries(changes)) {
+    if (value !== device[field]) {
+      data[field] = value;
+      details[field] = { from: device[field], to: value };
+    }
+  }
+  return { data, details };
+}
+
 class Device extends BaseModel {
   // Accepts aa:bb:cc:dd:ee:ff, AA-BB-..., or no separators; 400 otherwise.
   static normalizeMac(mac) {
@@ -264,16 +278,11 @@ class Device extends BaseModel {
 
   // Admin edit of name, location and owner. A new owner (or none) gets an
   // empty history, the same rule as unlink(): nobody sees another owner's data.
+  // The alert email clock starts again too, so the new owner's first alarm
+  // email is not held back by an email the old owner got.
   // newOwner is the User for a new owner_id; the log keeps both owners' emails.
   async adminUpdate(changes, admin, newOwner = null) {
-    const data = {};
-    const details = {};
-    for (const [field, value] of Object.entries(changes)) {
-      if (value !== this[field]) {
-        data[field] = value;
-        details[field] = { from: this[field], to: value };
-      }
-    }
+    const { data, details } = changedFields(this, changes);
     if (Object.keys(data).length === 0) {
       return;
     }
@@ -285,7 +294,7 @@ class Device extends BaseModel {
     const target = this.logTarget();
     await prisma.$transaction(async (tx) => {
       if (ownerChanged) {
-        data.last_reading_at = null;
+        Object.assign(data, { last_reading_at: null, alert_email_at: null });
         await tx.alert.deleteMany({ where: { device_id: this.device_id } });
         await tx.reading.deleteMany({ where: { device_id: this.device_id } });
       }
