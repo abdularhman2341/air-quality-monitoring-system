@@ -30,31 +30,40 @@ function buildReadings(device) {
   return readings;
 }
 
+// Returns false when the device already exists (skipDuplicates), so its
+// readings are left as they are.
+async function createDevice(tx, device, hash) {
+  const { count } = await tx.device.createMany({
+    data: [{
+      device_id: device.id,
+      pairing_code_hash: hash,
+      connection_state: device.state,
+      online_since: device.state === 'online' ? new Date() : null,
+    }],
+    skipDuplicates: true,
+  });
+  return count > 0;
+}
+
+async function addReadings(tx, device) {
+  const readings = buildReadings(device);
+  await tx.reading.createMany({ data: readings, skipDuplicates: true });
+  await tx.device.update({
+    where: { device_id: device.id },
+    data: { last_reading_at: readings[readings.length - 1].reading_time },
+  });
+}
+
 async function seed() {
   const hashes = await Promise.all(DEMO_DEVICES.map((device) => bcrypt.hash(device.pairingCode, 10)));
 
   await prisma.$transaction(async (tx) => {
     for (const [index, device] of DEMO_DEVICES.entries()) {
-      const { count } = await tx.device.createMany({
-        data: [{
-          device_id: device.id,
-          pairing_code_hash: hashes[index],
-          connection_state: device.state,
-          online_since: device.state === 'online' ? new Date() : null,
-        }],
-        skipDuplicates: true,
-      });
-      if (count === 0) {
+      if (!(await createDevice(tx, device, hashes[index]))) {
         console.log(`${device.id} already exists, skipped`);
         continue;
       }
-
-      const readings = buildReadings(device);
-      await tx.reading.createMany({ data: readings, skipDuplicates: true });
-      await tx.device.update({
-        where: { device_id: device.id },
-        data: { last_reading_at: readings[readings.length - 1].reading_time },
-      });
+      await addReadings(tx, device);
       console.log(`${device.id} created with ${READINGS_PER_DEVICE} readings (pairing code ${device.pairingCode})`);
     }
   });

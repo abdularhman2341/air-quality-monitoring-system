@@ -14,6 +14,26 @@ function isDatabaseUnavailable(err) {
   return err instanceof Prisma.PrismaClientKnownRequestError && DB_UNAVAILABLE_CODES.has(err.code);
 }
 
+function databaseUnavailable(req, res) {
+  console.error(`Database unavailable: ${req.method} ${req.originalUrl}`);
+  res.set('Retry-After', '30');
+  return res.status(503).json({
+    error: {
+      code: 'DATABASE_UNAVAILABLE',
+      message: 'Database is unavailable. Try again shortly.',
+    },
+  });
+}
+
+// An HttpError names its own code. Anything else is a client mistake
+// (BAD_REQUEST) unless it is a 500.
+function errorCode(err, status) {
+  if (err instanceof HttpError) {
+    return err.code;
+  }
+  return status === 500 ? 'INTERNAL_ERROR' : 'BAD_REQUEST';
+}
+
 // The one place that turns an error into the JSON answer
 // { error: { code, message } }. The frontend translates by `code`.
 // - Database down: 503 DATABASE_UNAVAILABLE with Retry-After.
@@ -26,14 +46,7 @@ function isDatabaseUnavailable(err) {
 // parameters as an error handler.
 function errorHandler(err, req, res, next) {
   if (isDatabaseUnavailable(err)) {
-    console.error(`Database unavailable: ${req.method} ${req.originalUrl}`);
-    res.set('Retry-After', '30');
-    return res.status(503).json({
-      error: {
-        code: 'DATABASE_UNAVAILABLE',
-        message: 'Database is unavailable. Try again shortly.',
-      },
-    });
+    return databaseUnavailable(req, res);
   }
 
   const status = err.status || 500;
@@ -42,16 +55,9 @@ function errorHandler(err, req, res, next) {
     console.error(err);
   }
 
-  let code = 'BAD_REQUEST';
-  if (err instanceof HttpError) {
-    code = err.code;
-  } else if (status === 500) {
-    code = 'INTERNAL_ERROR';
-  }
-
   res.status(status).json({
     error: {
-      code,
+      code: errorCode(err, status),
       message: status === 500 ? 'Unexpected server error.' : err.message,
     },
   });

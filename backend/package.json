@@ -16,6 +16,7 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "simulate": "node src/scripts/simulateDevice.js",
+    "lint": "oxlint",
     "test": "jest --runInBand"
   },
   "prisma": {
@@ -48,6 +49,7 @@
   },
   "devDependencies": {
     "jest": "^29.7.0",
+    "oxlint": "^1.88.0",
     "supertest": "^7.1.4"
   },
   "jest": {

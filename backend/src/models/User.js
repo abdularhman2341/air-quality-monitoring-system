@@ -145,12 +145,7 @@ class User extends BaseModel {
   // A new email was not proven by anyone, so the account goes back to
   // unverified and any waiting code or email change is dropped.
   async adminUpdate(changes, admin) {
-    const diff = {};
-    for (const [field, value] of Object.entries(changes)) {
-      if (value !== this[field]) {
-        diff[field] = { from: this[field], to: value };
-      }
-    }
+    const diff = this.changedFields(changes);
     if (Object.keys(diff).length === 0) {
       return this;
     }
@@ -159,19 +154,8 @@ class User extends BaseModel {
       data.email_verified_at = null;
       data.pending_email = null;
     }
-    const target = this.logTarget();
     try {
-      await prisma.$transaction(async (tx) => {
-        if (data.role && data.role !== 'admin') {
-          await User.ensureAnotherAdmin(tx, this.id);
-        }
-        const row = await tx.user.update({ where: { id: this.id }, data });
-        if (data.email) {
-          await tx.verificationCode.deleteMany({ where: { user_id: this.id, purpose: { in: ['verify_email', 'change_email'] } } });
-        }
-        await AdminAction.log(tx, admin, 'user.update', target, diff);
-        Object.assign(this, row);
-      });
+      await this.saveAdminUpdate(data, diff, admin);
     } catch (err) {
       if (err.code === UNIQUE_VIOLATION) {
         throw new HttpError(409, 'EMAIL_TAKEN', 'An account with this email already exists.');
@@ -179,6 +163,34 @@ class User extends BaseModel {
       throw err;
     }
     return this;
+  }
+
+  // { field: { from, to } } for each value that differs from this user.
+  changedFields(changes) {
+    const diff = {};
+    for (const [field, value] of Object.entries(changes)) {
+      if (value !== this[field]) {
+        diff[field] = { from: this[field], to: value };
+      }
+    }
+    return diff;
+  }
+
+  // The last admin check, the update, the dropped codes and the log row are
+  // one transaction: either all of them happen or none.
+  async saveAdminUpdate(data, diff, admin) {
+    const target = this.logTarget();
+    await prisma.$transaction(async (tx) => {
+      if (data.role && data.role !== 'admin') {
+        await User.ensureAnotherAdmin(tx, this.id);
+      }
+      const row = await tx.user.update({ where: { id: this.id }, data });
+      if (data.email) {
+        await tx.verificationCode.deleteMany({ where: { user_id: this.id, purpose: { in: ['verify_email', 'change_email'] } } });
+      }
+      await AdminAction.log(tx, admin, 'user.update', target, diff);
+      Object.assign(this, row);
+    });
   }
 
   // Deletes the account in one transaction: its devices are unlinked first
