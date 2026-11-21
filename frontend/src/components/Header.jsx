@@ -12,20 +12,9 @@ function Header() {
 
   return (
     <header className="header">
-      <Link to="/" className="brand">
-        <img src={logo} alt="Gas Monitor logo" width="40" height="40" />
-        <div>
-          <div className="brand-name">Gas Monitor</div>
-          <div className="brand-tagline">{t('header.tagline')}</div>
-        </div>
-      </Link>
+      <Brand />
 
-      <nav className="nav">
-        <NavLink to="/" end className="nav-link">{t('header.dashboard')}</NavLink>
-        <NavLink to="/add-sensor" className="nav-link">{t('header.sensors')}</NavLink>
-        <NavLink to="/history" className="nav-link">{t('header.history')}</NavLink>
-        {user.role === 'admin' && <NavLink to="/admin" className="nav-link">{t('header.admin')}</NavLink>}
-      </nav>
+      <MainNav isAdmin={user.role === 'admin'} />
 
       <div className="header-actions">
         <LanguageSwitch />
@@ -37,6 +26,32 @@ function Header() {
         </button>
       </div>
     </header>
+  )
+}
+
+function Brand() {
+  const { t } = useLanguage()
+  return (
+    <Link to="/" className="brand">
+      <img src={logo} alt="Gas Monitor logo" width="40" height="40" />
+      <div>
+        <div className="brand-name">Gas Monitor</div>
+        <div className="brand-tagline">{t('header.tagline')}</div>
+      </div>
+    </Link>
+  )
+}
+
+// The admin link shows only for admins; the backend checks the role again.
+function MainNav({ isAdmin }) {
+  const { t } = useLanguage()
+  return (
+    <nav className="nav">
+      <NavLink to="/" end className="nav-link">{t('header.dashboard')}</NavLink>
+      <NavLink to="/add-sensor" className="nav-link">{t('header.sensors')}</NavLink>
+      <NavLink to="/history" className="nav-link">{t('header.history')}</NavLink>
+      {isAdmin && <NavLink to="/admin" className="nav-link">{t('header.admin')}</NavLink>}
+    </nav>
   )
 }
 

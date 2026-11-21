@@ -20,9 +20,8 @@ function initialLanguage() {
   return navigator.language.startsWith('ar') ? 'ar' : 'en'
 }
 
-export function LanguageProvider({ children }) {
-  const [lang, setLang] = useState(initialLanguage)
-
+// Keeps <html lang dir> in step with the language and saves the choice.
+function useDocumentLanguage(lang) {
   useEffect(() => {
     document.documentElement.lang = lang
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
@@ -32,24 +31,32 @@ export function LanguageProvider({ children }) {
       return
     }
   }, [lang])
+}
 
-  // Fills {name}-style placeholders from vars. A missing Arabic text falls
-  // back to English, then to the key itself.
-  function t(key, vars = {}) {
-    const text = translations[lang][key] ?? translations.en[key] ?? key
-    return text.replace(/\{(\w+)\}/g, (match, name) => vars[name] ?? match)
+// t() fills {name}-style placeholders from vars. A missing Arabic text falls
+// back to English, then to the key itself.
+// The backend writes its messages in English, so English shows them as they
+// are. Arabic translates by error code; a code with no translation shows
+// the general UNKNOWN_ERROR text.
+function translator(lang) {
+  return {
+    t(key, vars = {}) {
+      const text = translations[lang][key] ?? translations.en[key] ?? key
+      return text.replace(/\{(\w+)\}/g, (match, name) => vars[name] ?? match)
+    },
+    errorText(err) {
+      if (lang === 'en') {
+        return err.message
+      }
+      return errorMessages[lang][err.code] || errorMessages[lang].UNKNOWN_ERROR
+    },
   }
+}
 
-  // The backend writes its messages in English, so English shows them as they
-  // are. Arabic translates by error code; a code with no translation shows
-  // the general UNKNOWN_ERROR text.
-  function errorText(err) {
-    if (lang === 'en') {
-      return err.message
-    }
-    return errorMessages[lang][err.code] || errorMessages[lang].UNKNOWN_ERROR
-  }
-
+export function LanguageProvider({ children }) {
+  const [lang, setLang] = useState(initialLanguage)
+  useDocumentLanguage(lang)
+  const { t, errorText } = translator(lang)
   const locale = LOCALES[lang]
 
   return (

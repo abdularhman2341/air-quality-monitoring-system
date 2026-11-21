@@ -7,6 +7,31 @@ import { onLiveUpdate } from '../realtime/socketClient'
 // A new key loads again and never shows the old key's data in between; null
 // means "nothing to load yet". On an error, the last good data for the same
 // key stays on screen next to the error.
+// Loads now, every refreshMs and on every live event, until the returned
+// function stops it. An answer that arrives after that is ignored.
+function keepLoading(request, key, refreshMs, setState) {
+  let active = true
+
+  function load() {
+    request()
+      .then((data) => active && setState({ key, data, error: null }))
+      .catch((error) => active && setState((prev) => ({
+        key,
+        data: prev.key === key ? prev.data : null,
+        error
+      })))
+  }
+
+  load()
+  const timer = refreshMs ? setInterval(load, refreshMs) : null
+  const stopLiveUpdates = onLiveUpdate(load)
+  return () => {
+    active = false
+    clearInterval(timer)
+    stopLiveUpdates()
+  }
+}
+
 export function useApiData(request, key, refreshMs) {
   const [state, setState] = useState({ key: null, data: null, error: null })
   const requestRef = useRef(request)
@@ -21,27 +46,7 @@ export function useApiData(request, key, refreshMs) {
     if (key === null) {
       return
     }
-    // An answer that arrives after the key changed or the page closed is ignored.
-    let active = true
-
-    function load() {
-      requestRef.current()
-        .then((data) => active && setState({ key, data, error: null }))
-        .catch((error) => active && setState((prev) => ({
-          key,
-          data: prev.key === key ? prev.data : null,
-          error
-        })))
-    }
-
-    load()
-    const timer = refreshMs ? setInterval(load, refreshMs) : null
-    const stopLiveUpdates = onLiveUpdate(load)
-    return () => {
-      active = false
-      clearInterval(timer)
-      stopLiveUpdates()
-    }
+    return keepLoading(() => requestRef.current(), key, refreshMs, setState)
   }, [key, refreshMs])
 
   const current = key !== null && state.key === key

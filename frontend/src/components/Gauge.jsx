@@ -11,7 +11,8 @@ function point(angle, radius) {
   return [CENTER + radius * Math.cos(angle), CENTER - radius * Math.sin(angle)]
 }
 
-function Gauge({ value, color, unitLabel, thresholdLabel }) {
+// The dial: grey track, the coloured part for the value, and the threshold mark.
+function GaugeArc({ value, color }) {
   const fraction = value === null ? 0 : Math.min(Math.max(value / GAUGE_MAX_PPM, 0), 1)
   // The coloured arc is the same path, drawn with a dash as long as the
   // value's share of the half circle (π × radius); the gap of 400 hides the rest.
@@ -22,16 +23,22 @@ function Gauge({ value, color, unitLabel, thresholdLabel }) {
   const [x2, y2] = point(tickAngle, 92)
 
   return (
+    <svg viewBox="0 0 200 116" role="img" aria-label={`${value ?? '—'} ppm`}>
+      <path d={ARC} className="gauge-track" />
+      <path
+        d={ARC}
+        className="gauge-value"
+        style={{ stroke: color, strokeDasharray: `${(length * fraction).toFixed(1)} 400` }}
+      />
+      <line x1={x1} y1={y1} x2={x2} y2={y2} className="gauge-tick" />
+    </svg>
+  )
+}
+
+function Gauge({ value, color, unitLabel, thresholdLabel }) {
+  return (
     <div className="gauge">
-      <svg viewBox="0 0 200 116" role="img" aria-label={`${value ?? '—'} ppm`}>
-        <path d={ARC} className="gauge-track" />
-        <path
-          d={ARC}
-          className="gauge-value"
-          style={{ stroke: color, strokeDasharray: `${(length * fraction).toFixed(1)} 400` }}
-        />
-        <line x1={x1} y1={y1} x2={x2} y2={y2} className="gauge-tick" />
-      </svg>
+      <GaugeArc value={value} color={color} />
       <div className="gauge-reading">
         <div className="gauge-number">{value === null ? '—' : formatPpm(value)}</div>
         <div className="gauge-unit">{unitLabel}</div>

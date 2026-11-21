@@ -42,20 +42,21 @@ export function setToken (token) {
   }
 }
 
-async function request (path, { method = 'GET', body } = {}) {
+function headersFor (body, token) {
   const headers = {}
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json'
   }
-  const token = getToken()
   if (token) {
     headers.Authorization = `Bearer ${token}`
   }
+  return headers
+}
 
-  // fetch only throws when no answer came back at all (offline, server down).
-  let res
+// fetch only throws when no answer came back at all (offline, server down).
+async function send (path, method, headers, body) {
   try {
-    res = await fetch(`${API_URL}${path}`, {
+    return await fetch(`${API_URL}${path}`, {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body)
@@ -63,20 +64,28 @@ async function request (path, { method = 'GET', body } = {}) {
   } catch {
     throw new ApiError(0, 'NETWORK_ERROR', 'Cannot reach the server. Check your connection and try again.')
   }
+}
 
+// Sign out only if the token that failed is still the current one: an old
+// request finishing after a new sign-in must not end the new session.
+function failure (res, data, token) {
+  const error = data?.error || {}
+  if (res.status === 401 && getToken() === token) {
+    onUnauthorized()
+  }
+  return new ApiError(res.status, error.code || 'UNKNOWN_ERROR', error.message || 'Something went wrong.')
+}
+
+async function request (path, { method = 'GET', body } = {}) {
+  const token = getToken()
+  const res = await send(path, method, headersFor(body, token), body)
   if (res.status === 204) {
     return null
   }
   // An answer that is not JSON (a proxy error page, for example) becomes null.
   const data = await res.json().catch(() => null)
   if (!res.ok) {
-    const error = data?.error || {}
-    // Sign out only if the token that failed is still the current one: an old
-    // request finishing after a new sign-in must not end the new session.
-    if (res.status === 401 && getToken() === token) {
-      onUnauthorized()
-    }
-    throw new ApiError(res.status, error.code || 'UNKNOWN_ERROR', error.message || 'Something went wrong.')
+    throw failure(res, data, token)
   }
   return data
 }
