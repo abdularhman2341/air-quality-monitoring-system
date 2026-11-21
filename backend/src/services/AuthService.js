@@ -252,20 +252,7 @@ class AuthService {
       throw tooManyAttempts();
     }
     const user = await User.findByEmail(email);
-    const done = user
-      ? await prisma.$transaction(async (tx) => {
-        if (!(await VerificationCode.consume(tx, user.id, 'reset_password', code))) {
-          return false;
-        }
-        await user.setPassword(newPassword, tx);
-        await Session.revokeAll(user.id, tx);
-        // The code arrived at this email, so the email is proven too.
-        if (!user.isEmailVerified()) {
-          await user.markEmailVerified(tx);
-        }
-        return true;
-      })
-      : false;
+    const done = user ? await this.applyResetCode(user, code, newPassword) : false;
     if (!done) {
       throw invalidCode();
     }
@@ -275,6 +262,23 @@ class AuthService {
     await RateLimit.clear('login_email', user.email);
     this.sendInBackground(user.email, passwordChangedEmail(), 'password changed notice');
     return user;
+  }
+
+  // Uses the code and sets the new password in one transaction. Returns false,
+  // with nothing changed but the counted try, when the code is wrong.
+  async applyResetCode(user, code, newPassword) {
+    return prisma.$transaction(async (tx) => {
+      if (!(await VerificationCode.consume(tx, user.id, 'reset_password', code))) {
+        return false;
+      }
+      await user.setPassword(newPassword, tx);
+      await Session.revokeAll(user.id, tx);
+      // The code arrived at this email, so the email is proven too.
+      if (!user.isEmailVerified()) {
+        await user.markEmailVerified(tx);
+      }
+      return true;
+    });
   }
 
   // Ends every session (a copied token shares the session id of this device),

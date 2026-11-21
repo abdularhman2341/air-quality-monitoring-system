@@ -223,22 +223,27 @@ class Device extends BaseModel {
     return `${chars.slice(0, 4).join('')}-${chars.slice(4).join('')}`;
   }
 
-  // Admin list: every device with its owner. The search matches the MAC
-  // (with or without separators), the name, the location or the owner's email.
-  static async adminSearch(query, page, limit) {
-    let where = {};
-    if (query) {
-      const contains = { contains: query, mode: 'insensitive' };
-      const mac = query.replace(/[:-]/g, '').toUpperCase();
-      where = {
-        OR: [
-          ...(mac ? [{ device_id: { contains: mac } }] : []),
-          { name: contains },
-          { location: contains },
-          { owner: { is: { email: contains } } },
-        ],
-      };
+  // The admin list search: the MAC (with or without separators), the name,
+  // the location or the owner's email. No query matches every device.
+  static adminWhere(query) {
+    if (!query) {
+      return {};
     }
+    const contains = { contains: query, mode: 'insensitive' };
+    const mac = query.replace(/[:-]/g, '').toUpperCase();
+    return {
+      OR: [
+        ...(mac ? [{ device_id: { contains: mac } }] : []),
+        { name: contains },
+        { location: contains },
+        { owner: { is: { email: contains } } },
+      ],
+    };
+  }
+
+  // Admin list: every device with its owner, oldest first, one page at a time.
+  static async adminSearch(query, page, limit) {
+    const where = Device.adminWhere(query);
     const [rows, total] = await Promise.all([
       prisma.device.findMany({
         where,

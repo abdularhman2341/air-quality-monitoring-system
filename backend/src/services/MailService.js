@@ -54,9 +54,24 @@ class MailService {
   // a reason: timeout (MAIL_TIMEOUT_MS), network, or Resend's own error name.
   // https://resend.com/docs/api-reference/emails/send-email
   async sendWithResend(message) {
-    let response;
+    const response = await this.postToResend(message);
+    const body = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new MailError(`Resend refused the email (${response.status}): ${body.message || 'no details'}`, {
+        status: response.status,
+        reason: body.name || 'rejected',
+      });
+    }
+
+    return { id: body.id || null };
+  }
+
+  // The request alone. A timeout or a network failure never reaches the
+  // response check in sendWithResend.
+  async postToResend(message) {
     try {
-      response = await fetch(`${this.config.apiUrl}/emails`, {
+      return await fetch(`${this.config.apiUrl}/emails`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${this.config.apiKey}`,
@@ -71,17 +86,6 @@ class MailService {
       }
       throw new MailError('Could not reach Resend.', { reason: 'network' });
     }
-
-    const body = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new MailError(`Resend refused the email (${response.status}): ${body.message || 'no details'}`, {
-        status: response.status,
-        reason: body.name || 'rejected',
-      });
-    }
-
-    return { id: body.id || null };
   }
 }
 

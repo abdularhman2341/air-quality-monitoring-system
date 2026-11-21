@@ -1,0 +1,11 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "env": { "node": true, "jest": true },
+  "rules": {
+    "eslint/max-lines": ["error", { "max": 400 }],
+    "eslint/max-lines-per-function": ["error", { "max": 25, "skipBlankLines": true, "skipComments": true }]
+  },
+  "overrides": [
+    { "files": ["tests/**", "prisma/**"], "rules": { "eslint/max-lines-per-function": "off" } }
+  ]
+}

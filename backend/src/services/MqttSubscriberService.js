@@ -72,15 +72,19 @@ class MqttSubscriberService {
       this.subscribe(DEVICE_TOPICS);
     });
     this.client.on('error', (err) => console.error(`MQTT error: ${err.message}`));
-    // MQTT.js calls client.handleMessage for every incoming message and sends
-    // the QoS 1 acknowledgement (PUBACK) only when done() is called, never on
-    // done(err). Replacing it means a message is acknowledged only after it is
-    // saved. The library passes the next message only after done(), so
-    // messages are handled one at a time, in arrival order.
-    // On a failure the connection is closed on purpose: the broker resends an
-    // unacknowledged message only after a reconnect, and stops sending once
-    // 20 are waiting (Mosquitto's max_inflight_messages). reconnectPeriod
-    // reconnects after 5 s, and the waiting messages arrive in order.
+    this.acknowledgeAfterSaving();
+  }
+
+  // MQTT.js calls client.handleMessage for every incoming message and sends
+  // the QoS 1 acknowledgement (PUBACK) only when done() is called, never on
+  // done(err). Replacing it means a message is acknowledged only after it is
+  // saved. The library passes the next message only after done(), so
+  // messages are handled one at a time, in arrival order.
+  // On a failure the connection is closed on purpose: the broker resends an
+  // unacknowledged message only after a reconnect, and stops sending once
+  // 20 are waiting (Mosquitto's max_inflight_messages). reconnectPeriod
+  // reconnects after 5 s, and the waiting messages arrive in order.
+  acknowledgeAfterSaving() {
     this.client.handleMessage = (packet, done) => {
       this.handleMessage(packet.topic, packet.payload).then(
         () => done(),

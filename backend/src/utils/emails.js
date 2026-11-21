@@ -92,6 +92,24 @@ function deviceLines(device) {
   };
 }
 
+// What to do during a leak, in the alarm email. A spark from a switch can
+// light the gas, so the first step is to touch nothing electrical.
+const SAFETY_STEPS_AR = [
+  'ماذا تفعل الآن:',
+  '- لا تشعل ناراً ولا تشغّل أو تطفئ أي مفتاح كهرباء.',
+  '- افتح النوافذ والأبواب.',
+  '- أغلق محبس الغاز إذا كان الوصول إليه آمناً.',
+  '- اخرج من المكان، واتصل بالدفاع المدني على 998 إذا استمرت الرائحة.',
+];
+
+const SAFETY_STEPS_EN = [
+  'What to do now:',
+  '- Do not light a flame and do not switch anything electrical on or off.',
+  '- Open the windows and doors.',
+  '- Close the gas valve if it is safe to reach.',
+  '- Leave the area, and call Civil Defense on 998 if the smell stays.',
+];
+
 // Sent when a device starts an alarm. The buzzer on the device is the real
 // alarm; this email is a backup for someone who is not in the room.
 function gasAlertEmail({ device, ppm, thresholdPpm, startedAt, appUrl }) {
@@ -105,21 +123,13 @@ function gasAlertEmail({ device, ppm, thresholdPpm, startedAt, appUrl }) {
       `القراءة: ${Math.round(ppm)} جزء في المليون (تقديري). حد الإنذار: ${Math.round(thresholdPpm)}.`,
       `الوقت: ${time}`,
       '',
-      'ماذا تفعل الآن:',
-      '- لا تشعل ناراً ولا تشغّل أو تطفئ أي مفتاح كهرباء.',
-      '- افتح النوافذ والأبواب.',
-      '- أغلق محبس الغاز إذا كان الوصول إليه آمناً.',
-      '- اخرج من المكان، واتصل بالدفاع المدني على 998 إذا استمرت الرائحة.',
+      ...SAFETY_STEPS_AR,
       '',
       `Sensor "${label.en}" measured gas above the alarm limit.`,
       `Reading: ${Math.round(ppm)} ppm (estimate). Alarm limit: ${Math.round(thresholdPpm)}.`,
       `Time: ${time}`,
       '',
-      'What to do now:',
-      '- Do not light a flame and do not switch anything electrical on or off.',
-      '- Open the windows and doors.',
-      '- Close the gas valve if it is safe to reach.',
-      '- Leave the area, and call Civil Defense on 998 if the smell stays.',
+      ...SAFETY_STEPS_EN,
       '',
       ...link,
       'يمكنك إيقاف هذه الرسائل من الملف الشخصي. | You can turn these emails off in your profile.',

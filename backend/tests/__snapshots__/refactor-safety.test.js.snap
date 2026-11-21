@@ -1,0 +1,74 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`gas alert email text the alarm email without a name, location or link 1`] = `
+{
+  "subject": "تنبيه تسرب غاز: Sensor | Gas leak alert: Sensor",
+  "text": "الحساس «Sensor» رصد تركيز غاز أعلى من حد الإنذار.
+القراءة: 1000 جزء في المليون (تقديري). حد الإنذار: 800.
+الوقت: 21 Nov 2026, 21:05 (Riyadh time)
+
+ماذا تفعل الآن:
+- لا تشعل ناراً ولا تشغّل أو تطفئ أي مفتاح كهرباء.
+- افتح النوافذ والأبواب.
+- أغلق محبس الغاز إذا كان الوصول إليه آمناً.
+- اخرج من المكان، واتصل بالدفاع المدني على 998 إذا استمرت الرائحة.
+
+Sensor "Sensor" measured gas above the alarm limit.
+Reading: 1000 ppm (estimate). Alarm limit: 800.
+Time: 21 Nov 2026, 21:05 (Riyadh time)
+
+What to do now:
+- Do not light a flame and do not switch anything electrical on or off.
+- Open the windows and doors.
+- Close the gas valve if it is safe to reach.
+- Leave the area, and call Civil Defense on 998 if the smell stays.
+
+يمكنك إيقاف هذه الرسائل من الملف الشخصي. | You can turn these emails off in your profile.",
+}
+`;
+
+exports[`gas alert email text the alarm email, with a location and a link 1`] = `
+{
+  "subject": "تنبيه تسرب غاز: Kitchen sensor | Gas leak alert: Kitchen sensor",
+  "text": "الحساس «Kitchen sensor (Floor 1)» رصد تركيز غاز أعلى من حد الإنذار.
+القراءة: 1250 جزء في المليون (تقديري). حد الإنذار: 1000.
+الوقت: 21 Nov 2026, 21:05 (Riyadh time)
+
+ماذا تفعل الآن:
+- لا تشعل ناراً ولا تشغّل أو تطفئ أي مفتاح كهرباء.
+- افتح النوافذ والأبواب.
+- أغلق محبس الغاز إذا كان الوصول إليه آمناً.
+- اخرج من المكان، واتصل بالدفاع المدني على 998 إذا استمرت الرائحة.
+
+Sensor "Kitchen sensor (Floor 1)" measured gas above the alarm limit.
+Reading: 1250 ppm (estimate). Alarm limit: 1000.
+Time: 21 Nov 2026, 21:05 (Riyadh time)
+
+What to do now:
+- Do not light a flame and do not switch anything electrical on or off.
+- Open the windows and doors.
+- Close the gas valve if it is safe to reach.
+- Leave the area, and call Civil Defense on 998 if the smell stays.
+
+https://gas.example
+يمكنك إيقاف هذه الرسائل من الملف الشخصي. | You can turn these emails off in your profile.",
+}
+`;
+
+exports[`gas alert email text the alarm-ended email 1`] = `
+{
+  "subject": "انتهى تنبيه الغاز: Kitchen | Gas alert ended: Kitchen",
+  "text": "الحساس «Kitchen» عاد إلى ما دون حد الإنذار.
+أعلى قراءة أثناء التنبيه: 1401 جزء في المليون (تقديري).
+الوقت: 21 Nov 2026, 21:05 (Riyadh time)
+تأكد من مصدر التسرب قبل استخدام الغاز من جديد.
+
+Sensor "Kitchen" is back below the alarm limit.
+Highest reading during the alert: 1401 ppm (estimate).
+Time: 21 Nov 2026, 21:05 (Riyadh time)
+Find the source of the leak before using gas again.
+
+https://gas.example
+يمكنك إيقاف هذه الرسائل من الملف الشخصي. | You can turn these emails off in your profile.",
+}
+`;
