@@ -50,7 +50,9 @@ function Dashboard() {
     REFRESH_MS
   )
   // Only the newest alert is needed: it is open when it has no ended_at.
-  const { data: alertData } = useApiData(
+  // Until it arrives, or when it fails, the alerts card says so instead of
+  // "all normal"; the big status still follows the device's own alarm flag.
+  const { data: alertData, error: alertError } = useApiData(
     () => api.alerts({ device_id: device.device_id, limit: 1 }),
     device ? `alert|${device.device_id}` : null,
     REFRESH_MS
@@ -145,17 +147,28 @@ function Dashboard() {
 
         <div className={`card info-card ${openAlert ? 'alert-active' : ''}`}>
           <div className="info-label">{t('dashboard.alerts')}</div>
-          <div className="info-title" style={{ color: openAlert ? 'var(--danger-ink)' : 'var(--safe-ink)' }}>
-            {openAlert ? t('dashboard.alarmActive') : t('dashboard.noAlerts')}
-          </div>
-          <p className="info-body">
-            {openAlert
-              ? t('dashboard.alarmSince', {
-                time: formatTime(openAlert.started_at, locale),
-                ppm: formatPpm(openAlert.peak_lpg_ppm_est)
-              })
-              : t('dashboard.allNormal')}
-          </p>
+          {alertError ? (
+            <>
+              <div className="info-title" style={{ color: 'var(--warn-ink)' }}>{t('dashboard.alertsUnknown')}</div>
+              <p className="info-body" role="alert">{errorText(alertError)}</p>
+            </>
+          ) : !alertData ? (
+            <div className="info-title">{t('common.loading')}</div>
+          ) : (
+            <>
+              <div className="info-title" style={{ color: openAlert ? 'var(--danger-ink)' : 'var(--safe-ink)' }}>
+                {openAlert ? t('dashboard.alarmActive') : t('dashboard.noAlerts')}
+              </div>
+              <p className="info-body">
+                {openAlert
+                  ? t('dashboard.alarmSince', {
+                    time: formatTime(openAlert.started_at, locale),
+                    ppm: formatPpm(openAlert.peak_lpg_ppm_est)
+                  })
+                  : t('dashboard.allNormal')}
+              </p>
+            </>
+          )}
           <Link to="/history">{t('dashboard.viewHistory')}</Link>
         </div>
       </div>
