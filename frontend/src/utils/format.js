@@ -1,7 +1,8 @@
 // Must match the firmware (gas_monitor.ino): the alarm turns on at
 // ALARM_ON_PPM (1000) and becomes "danger" at ALARM_DANGER_PPM (1500).
 export const THRESHOLD_PPM = 1000
-export const GAUGE_MAX_PPM = 1500
+// The gauge ends past the danger level, so readings above 1500 still move it.
+export const GAUGE_MAX_PPM = 1800
 
 // Always 0-9 digits with commas, in both languages.
 export function formatPpm(value) {

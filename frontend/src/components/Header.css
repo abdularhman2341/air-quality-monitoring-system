@@ -86,3 +86,23 @@
   height: 38px;
   padding: 0 14px;
 }
+
+/* Phones: the links move to a second row that scrolls sideways, so the
+   header never runs off the screen (issue #44). */
+@media (max-width: 640px) {
+  .header {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+
+  .brand-tagline {
+    display: none;
+  }
+
+  .nav {
+    order: 3;
+    flex-basis: 100%;
+    min-height: 44px;
+    overflow-x: auto;
+  }
+}

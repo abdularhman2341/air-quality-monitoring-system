@@ -30,10 +30,24 @@ class AlertService {
     }
 
     if (!openAlert) return null;
+    return this.closeAlert(openAlert, time, ownerId);
+  }
+
+  // A device that loses power during an alarm never sends alarm_off, and it
+  // restarts with the alarm off. So a reading without the alarm closes an
+  // alert that is still open, at the reading's time (issue #42). A reading
+  // from before the alert started (a late message) does not.
+  async closeIfAlarmStopped(deviceId, readingTime, ownerId) {
+    const openAlert = await Alert.findOpen(deviceId);
+    if (!openAlert || readingTime < openAlert.started_at) return null;
+    return this.closeAlert(openAlert, readingTime, ownerId);
+  }
+
+  async closeAlert(openAlert, time, ownerId) {
     await openAlert.close(time);
-    console.log(`MQTT ${deviceId} alert ${openAlert.id} closed`);
+    console.log(`MQTT ${openAlert.device_id} alert ${openAlert.id} closed`);
     realtimeGateway.emitToOwner(ownerId, 'alert:new', openAlert);
-    this.emailLater(deviceId, () => this.emailAlarmEnded(openAlert, ownerId));
+    this.emailLater(openAlert.device_id, () => this.emailAlarmEnded(openAlert, ownerId));
     return openAlert;
   }
 

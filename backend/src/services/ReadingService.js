@@ -15,6 +15,8 @@ class ReadingService {
     await deviceService.updateLastReading(deviceId, reading.reading_time);
     if (reading.alarm_active) {
       await alertService.updatePeak(deviceId, reading.lpg_ppm_est);
+    } else {
+      await alertService.closeIfAlarmStopped(deviceId, reading.reading_time, ownerId);
     }
     realtimeGateway.emitToOwner(ownerId, 'reading:new', reading);
     return reading;

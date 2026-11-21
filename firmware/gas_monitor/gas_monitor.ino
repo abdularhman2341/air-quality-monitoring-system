@@ -464,7 +464,8 @@ void maintainConnections() {
     return;
   }
 
-  // Clock: needed for "ts" and for checking the broker's TLS certificate dates.
+  // Clock: needed for "ts" (reading and alarm times). TLS does not check
+  // certificate dates by default (MBEDTLS_HAVE_TIME_DATE is off).
   // NTP is (re)started once Wi-Fi is up, then every NTP_RETRY_MS until it answers.
   if (!timeSynced) {
     if (!clockIsValid()) {
@@ -610,7 +611,7 @@ void setup() {
   readDeviceMac();
 
   Serial.println();
-  Serial.println("=== Gas Monitor - S1-07 Wi-Fi + MQTT ===");
+  Serial.println("=== Gas Monitor - Wi-Fi + MQTT/TLS + local alarm ===");
   Serial.printf("Device MAC (device_id): %s\n", deviceMac);
   Serial.println("Note: let the sensor heater warm up before trusting the readings.");
   Serial.println("      ppm values are uncalibrated estimates.");
