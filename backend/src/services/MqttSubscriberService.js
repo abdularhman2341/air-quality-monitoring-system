@@ -36,9 +36,9 @@ const VALIDATORS = {
   },
 };
 
-// What a valid message from a registered device does. ownerId is null while
-// no user has linked the device: the data is still saved, but no live event
-// is sent (RealtimeGateway.emitToOwner skips it).
+// What a valid message from a registered device does. ownerId is the user
+// who linked the device; a device with no owner only gets status messages
+// here (see handleMessage).
 const HANDLERS = {
   readings: (deviceId, message, ownerId) => readingService.processTelemetry(deviceId, message, ownerId),
   alarms: (deviceId, message, ownerId) => alertService.handleAlarmEvent(deviceId, message, ownerId),
@@ -109,6 +109,10 @@ class MqttSubscriberService {
   // be valid is dropped: logged, then acknowledged like a good one, because
   // the broker would otherwise resend it forever. An error from the database
   // is not caught here, so the message is not acknowledged and comes back.
+  // A device with no owner keeps only its status (so the next owner sees it
+  // online). Its readings and alarms are acknowledged without a log line and
+  // not kept: they come from wherever the device was before, and the next
+  // owner starts with an empty history, as after an unlink.
   // The tests call this method directly, without a broker.
   async handleMessage(topic, payload) {
     const match = TOPIC_PATTERN.exec(topic);
@@ -128,6 +132,7 @@ class MqttSubscriberService {
     if (problem) return this.drop(topic, problem);
     const ownerId = await Device.findOwnerId(deviceId);
     if (ownerId === undefined) return this.drop(topic, 'device is not registered');
+    if (ownerId === null && kind !== 'status') return undefined;
 
     return HANDLERS[kind](deviceId, message, ownerId);
   }
