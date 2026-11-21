@@ -180,7 +180,7 @@ function Dashboard() {
                 />
                 <YAxis
                   domain={[0, chartMax]}
-                  ticks={[0, 500, 1000, 1500]}
+                  ticks={[0, 600, 1200, GAUGE_MAX_PPM]}
                   tickFormatter={formatPpm}
                   tick={{ fontSize: 11, fill: 'var(--text-faint)' }}
                   tickLine={false}

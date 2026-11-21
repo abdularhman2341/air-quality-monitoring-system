@@ -64,6 +64,23 @@ describe('alerts', () => {
     expect(alert.started_at.toISOString()).toBe(ts);
   });
 
+  test('an alert left open by a power cut closes at the first reading without the alarm (issue #42)', async () => {
+    await publish(MAC, 'alarms', alarm('alarm_on', 1200));
+    const ts = new Date(Date.now() + 1000).toISOString();
+    await publish(MAC, 'readings', { seq: 2, lpg_ppm_est: 90, alarm_active: false, ts });
+    const alert = await prisma.alert.findFirst();
+    expect(alert.ended_at && alert.ended_at.toISOString()).toBe(ts);
+    await publish(MAC, 'alarms', alarm('alarm_on', 1300));
+    expect(await prisma.alert.count()).toBe(2);
+  });
+
+  test('a reading from before the alert started does not close it', async () => {
+    await publish(MAC, 'alarms', alarm('alarm_on', 1200));
+    const before = new Date(Date.now() - 60 * 1000).toISOString();
+    await publish(MAC, 'readings', { seq: 3, lpg_ppm_est: 90, alarm_active: false, ts: before });
+    expect((await prisma.alert.findFirst()).ended_at).toBeNull();
+  });
+
   test('a repeated alarm_on does not open a second alert', async () => {
     await publish(MAC, 'alarms', alarm('alarm_on', 1200));
     await publish(MAC, 'alarms', alarm('alarm_on', 1300));
