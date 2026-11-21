@@ -216,7 +216,6 @@
   cursor: default;
 }
 
-.profile-section .alert-emails-note,
 .profile-section .switch-row + .form-error {
   margin-top: 12px;
 }

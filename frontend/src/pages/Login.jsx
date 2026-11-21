@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
+import ActivateAccount from '../components/ActivateAccount'
 
 function Login() {
   const location = useLocation()
@@ -10,12 +11,14 @@ function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [inactive, setInactive] = useState(false)
   const { login } = useAuth()
   const { t, errorText } = useLanguage()
 
   // On success nothing else happens here: the user is set, and GuestRoute
   // moves on to the page they came from. submitting stays true because this
-  // page is leaving.
+  // page is leaving. An account that was never activated gets a new code by
+  // email (403 EMAIL_NOT_VERIFIED), and the page shows the code step.
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
@@ -23,9 +26,14 @@ function Login() {
     try {
       await login(email, password)
     } catch (err) {
-      setError(err)
+      setInactive(err.code === 'EMAIL_NOT_VERIFIED')
+      setError(err.code === 'EMAIL_NOT_VERIFIED' ? null : err)
       setSubmitting(false)
     }
+  }
+
+  if (inactive) {
+    return <ActivateAccount email={email} onBack={() => setInactive(false)} />
   }
 
   return (

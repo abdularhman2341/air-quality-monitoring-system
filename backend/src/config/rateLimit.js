@@ -18,4 +18,7 @@ module.exports = {
   resetRequestsPerEmail: 3,
   resetRequestsPerAddress: 10,
   resetTriesPerAddress: 20,
+  signupsPerAddress: 10,
+  signupTriesPerAddress: 20,
+  signupResendsPerAddress: 10,
 };

@@ -33,13 +33,16 @@ class AdminService {
     return { user, devices };
   }
 
-  // When the email changes, the new address gets a verification code (the
-  // account is unverified until the user types it) and the old address is told.
+  // When the email changes, the account is inactive again: its sessions end,
+  // the new address gets a code, and the user types it at the next sign-in.
+  // The old address is told.
   async updateUser(userId, changes, admin) {
     const user = await this.getUser(userId);
     const oldEmail = user.email;
     await user.adminUpdate(changes, admin);
     if (user.email !== oldEmail) {
+      await Session.revokeAll(user.id);
+      realtimeGateway.disconnectUser(String(user.id));
       const code = await VerificationCode.issue(user.id, 'verify_email', { force: true });
       mailService.sendInBackground(user.email, emailVerificationEmail(code, VerificationCode.CODE_MINUTES), 'email verification code');
       mailService.sendInBackground(oldEmail, emailChangedEmail(user.email), 'email changed notice');

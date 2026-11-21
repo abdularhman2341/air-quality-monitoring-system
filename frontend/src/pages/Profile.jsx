@@ -158,9 +158,6 @@ function AlertEmails() {
         />
         <span>{t('profile.alertEmailsLabel')}</span>
       </label>
-      {user.alert_emails && user.email_verified === false && (
-        <p className="notice-warn alert-emails-note" role="status">{t('profile.alertEmailsUnverified')}</p>
-      )}
       {error && <p className="form-error" role="alert">{errorText(error)}</p>}
     </div>
   )

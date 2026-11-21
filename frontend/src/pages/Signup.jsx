@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 import { passwordErrorKey } from '../utils/password'
+import ActivateAccount from '../components/ActivateAccount'
 
 function Signup() {
   const [name, setName] = useState('')
@@ -12,12 +13,13 @@ function Signup() {
   const [passwordError, setPasswordError] = useState(null)
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [sentTo, setSentTo] = useState(null)
   const { register } = useAuth()
   const { t, errorText } = useLanguage()
 
   // Password rules are checked here first, so the common mistakes get a clear
-  // message without a request. The backend checks them again. On success
-  // GuestRoute moves on to /add-sensor.
+  // message without a request. The backend checks them again. On success the
+  // page shows the code step; after the code GuestRoute moves on to /add-sensor.
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
@@ -28,11 +30,16 @@ function Signup() {
     }
     setSubmitting(true)
     try {
-      await register(name, email, password)
+      const { email: sent } = await register(name, email, password)
+      setSentTo(sent)
     } catch (err) {
       setError(err)
-      setSubmitting(false)
     }
+    setSubmitting(false)
+  }
+
+  if (sentTo) {
+    return <ActivateAccount email={sentTo} onBack={() => setSentTo(null)} />
   }
 
   const passwordInvalid = passwordError === 'signup.passwordTooShort' || passwordError === 'signup.passwordTooLong'

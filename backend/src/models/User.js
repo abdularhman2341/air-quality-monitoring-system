@@ -9,15 +9,19 @@ const { bcryptRounds } = require('../config/auth');
 const UNIQUE_VIOLATION = 'P2002';
 
 class User extends BaseModel {
+  // A new account starts inactive (email_verified_at null) until its code is
+  // typed. Signing up again with an email that was never activated replaces
+  // the name and password, so nobody can hold an email they do not own.
   // The unique email index decides, so two sign-ups with one email at the same
   // moment cannot both succeed: the second gets 409 EMAIL_TAKEN.
   static async register(name, email, password) {
-    const passwordHash = await bcrypt.hash(password, bcryptRounds);
+    const data = { name, password_hash: await bcrypt.hash(password, bcryptRounds), pending_email: null };
+    const replaced = await prisma.user.updateMany({ where: { email, email_verified_at: null }, data });
+    if (replaced.count === 1) {
+      return User.findByEmail(email);
+    }
     try {
-      const row = await prisma.user.create({
-        data: { name, email, password_hash: passwordHash },
-      });
-      return new User(row);
+      return new User(await prisma.user.create({ data: { ...data, email } }));
     } catch (err) {
       if (err.code === UNIQUE_VIOLATION) {
         throw new HttpError(409, 'EMAIL_TAKEN', 'An account with this email already exists.');

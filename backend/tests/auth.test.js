@@ -1,6 +1,9 @@
 const jwt = require('jsonwebtoken');
 const { api, prisma, resetDatabase, signUp, registerDevice, linkDevice, publish } = require('./helpers');
 
+// Skips typing the emailed code (signup-code.test.js covers it).
+const activate = (email) => prisma.user.update({ where: { email }, data: { email_verified_at: new Date() } });
+
 beforeEach(resetDatabase);
 afterAll(() => prisma.$disconnect());
 
@@ -29,15 +32,15 @@ describe('sign-up and sign-in', () => {
     await api()
       .post('/api/v1/auth/register')
       .send({ name: 'A', email: 'a@test.local', password })
-      .expect(201);
+      .expect(202);
   });
 
-  test('rejects the same email twice, whatever the letter case', async () => {
-    const body = { name: 'A', email: 'same@test.local', password: 'password123' };
-    await api().post('/api/v1/auth/register').send(body).expect(201);
+  test('rejects the email of an active account, whatever the letter case', async () => {
+    const user = await signUp();
+    const body = { name: 'A', email: user.email, password: 'password123' };
     const res = await api()
       .post('/api/v1/auth/register')
-      .send({ ...body, email: 'SAME@test.local' })
+      .send({ ...body, email: user.email.toUpperCase() })
       .expect(409);
     expect(res.body.error.code).toBe('EMAIL_TAKEN');
   });
@@ -55,7 +58,8 @@ describe('sign-up and sign-in', () => {
 
   test('a password with spaces at the start or end is kept exactly as typed', async () => {
     const password = ' secret123 ';
-    await api().post('/api/v1/auth/register').send({ name: 'A', email: 'a@test.local', password }).expect(201);
+    await api().post('/api/v1/auth/register').send({ name: 'A', email: 'a@test.local', password }).expect(202);
+    await activate('a@test.local');
     await api().post('/api/v1/auth/login').send({ email: 'a@test.local', password }).expect(200);
     await api().post('/api/v1/auth/login').send({ email: 'a@test.local', password: 'secret123' }).expect(401);
   });
@@ -96,7 +100,8 @@ describe('account deletion', () => {
 
   test('accepts a current password with spaces at the start or end', async () => {
     const password = ' secret123 ';
-    await api().post('/api/v1/auth/register').send({ name: 'A', email: 'a@test.local', password }).expect(201);
+    await api().post('/api/v1/auth/register').send({ name: 'A', email: 'a@test.local', password }).expect(202);
+    await activate('a@test.local');
     const login = await api().post('/api/v1/auth/login').send({ email: 'a@test.local', password }).expect(200);
     await api()
       .delete('/api/v1/auth/me')

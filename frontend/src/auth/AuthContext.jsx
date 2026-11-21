@@ -72,9 +72,16 @@ export function AuthProvider({ children }) {
     setUser(data.user)
   }
 
+  // The account is saved inactive and a code is emailed: nobody is signed in
+  // yet. activate() with that code signs in.
   async function register(name, email, password) {
-    await api.register(name, email, password)
-    await login(email, password)
+    return api.register(name, email, password)
+  }
+
+  async function activate(email, code) {
+    const data = await api.confirmSignup(email, code)
+    setToken(data.token)
+    setUser(data.user)
   }
 
   async function updateProfile(data) {
@@ -94,10 +101,6 @@ export function AuthProvider({ children }) {
 
   async function cancelEmailChange() {
     setUser(await api.cancelEmailChange())
-  }
-
-  async function verifyEmail(code) {
-    setUser(await api.verifyEmail(code))
   }
 
   async function deleteAccount(currentPassword) {
@@ -142,7 +145,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, authError, login, register, updateProfile, changeEmail, confirmEmailChange, cancelEmailChange, verifyEmail, deleteAccount, logoutAll, changePassword, refreshUser, logout }}>
+    <AuthContext.Provider value={{ user, loading, authError, login, register, updateProfile, changeEmail, confirmEmailChange, cancelEmailChange, activate, deleteAccount, logoutAll, changePassword, refreshUser, logout }}>
       {children}
     </AuthContext.Provider>
   )

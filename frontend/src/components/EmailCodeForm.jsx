@@ -4,8 +4,8 @@ import './EmailCodeForm.css'
 
 const RESEND_SECONDS = 60
 
-// A 6-digit code field with its button and "send a new code". Used by the
-// verify-email banner and by the email change in the profile. onSubmit and
+// A 6-digit code field with its button and "send a new code". Used to
+// activate a new account and by the email change in the profile. onSubmit and
 // onResend are async; an error they throw is shown under the field.
 function EmailCodeForm({ onSubmit, onResend, submitLabel, inputId }) {
   const { t, errorText } = useLanguage()
