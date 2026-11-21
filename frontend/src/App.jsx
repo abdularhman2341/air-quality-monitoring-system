@@ -7,7 +7,7 @@ import Login from './pages/Login'
 import Signup from './pages/Signup'
 import ForgotPassword from './pages/ForgotPassword'
 import AddSensor from './pages/AddSensor'
-import Profile from './pages/Profile'
+import Profile from './pages/profile/Profile'
 import Admin from './pages/admin/Admin'
 import { ProtectedRoute, GuestRoute, AdminRoute } from './auth/ProtectedRoute'
 
