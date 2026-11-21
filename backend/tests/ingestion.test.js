@@ -1,4 +1,4 @@
-const { prisma, resetDatabase, signUp, registerDevice, linkDevice, publish } = require('./helpers');
+const { api, prisma, resetDatabase, signUp, registerDevice, linkDevice, publish } = require('./helpers');
 
 const MAC = 'AAAAAAAAAA03';
 
@@ -95,5 +95,40 @@ describe('connection state', () => {
     await publish(MAC, 'status', { state: 'offline' });
     device = await prisma.device.findUnique({ where: { device_id: MAC } });
     expect(device.connection_state).toBe('offline');
+  });
+});
+
+describe('a device with no owner', () => {
+  const FREE = 'AAAAAAAAAA09';
+  const reading = () => ({ seq: 1, lpg_ppm_est: 1200, alarm_active: true, ts: now() });
+  const alarmOn = () => ({ event: 'alarm_on', lpg_ppm_est: 1200, threshold_ppm: 1000, ts: now() });
+
+  beforeEach(() => registerDevice(FREE));
+
+  test('its readings and alarms are acknowledged but not kept', async () => {
+    await publish(FREE, 'readings', reading());
+    await publish(FREE, 'alarms', alarmOn());
+    expect(await prisma.reading.count({ where: { device_id: FREE } })).toBe(0);
+    expect(await prisma.alert.count({ where: { device_id: FREE } })).toBe(0);
+  });
+
+  test('its status is still kept, so the next owner sees it online', async () => {
+    await publish(FREE, 'status', { state: 'online', ts: now() });
+    const device = await prisma.device.findUnique({ where: { device_id: FREE } });
+    expect(device.connection_state).toBe('online');
+  });
+
+  test('the next owner starts with an empty history after the device was unlinked', async () => {
+    const first = await signUp();
+    await linkDevice(first, FREE, 'ABCD-EFGH');
+    await api().delete(`/api/v1/devices/${FREE}`).set(first.auth).expect(204);
+    await publish(FREE, 'readings', reading());
+    await publish(FREE, 'alarms', alarmOn());
+    const next = await signUp();
+    await linkDevice(next, FREE, 'ABCD-EFGH');
+    const readings = await api().get(`/api/v1/devices/${FREE}/readings`).set(next.auth).expect(200);
+    const alerts = await api().get('/api/v1/alerts').set(next.auth).expect(200);
+    expect(readings.body.total).toBe(0);
+    expect(alerts.body.total).toBe(0);
   });
 });

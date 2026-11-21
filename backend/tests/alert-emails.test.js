@@ -83,12 +83,12 @@ describe('when an alarm starts', () => {
     expect(mailService.outbox).toEqual([]);
   });
 
-  test('a device without an owner sends nothing', async () => {
+  test('a device without an owner sends nothing and keeps no alert', async () => {
     await registerDevice('AAAAAAAAAA08');
     await publish('AAAAAAAAAA08', 'alarms', alarm('alarm_on', 1200));
     await pause();
     expect(mailService.outbox).toEqual([]);
-    expect(await prisma.alert.count()).toBe(1);
+    expect(await prisma.alert.count()).toBe(0);
   });
 
   test('a failed email does not stop the alert from being saved, and is logged', async () => {
