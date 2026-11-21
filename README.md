@@ -165,7 +165,7 @@ DATABASE_URL=postgresql://aqms:aqms_dev_password@localhost:5432/aqms_test npx pr
 npm test
 ```
 
-To use another test database, set `TEST_DATABASE_URL`. The tests cover sign-in and sessions, account deletion, device linking and removal, account isolation, MQTT ingestion, and alerts (see the [QA plan](docs/stage-3-report.md#62-qa-strategy)).
+To use another test database, set `TEST_DATABASE_URL`. The tests cover sign-in and sessions, account deletion, device linking and removal, account isolation, MQTT ingestion, and alerts (see the [test results](docs/stage-4-report.md#6-final-integration-and-qa-testing)).
 
 ## Running the Simulator Against Production
 
@@ -229,7 +229,7 @@ Other folders: `frontend/` (React app), `firmware/gas_monitor/` (ESP32 sketch), 
 | 2 | [Project Charter](docs/stage-2%20project%20charter.md) |
 | 3 | [Technical Documentation Report](docs/stage-3-report.md) |
 | | [1. User Stories and Mockups](docs/stage-3-report.md#1-user-stories-and-mockups) · [2. System Architecture](docs/stage-3-report.md#2-system-architecture) · [3. Components, Classes, and Database Design](docs/stage-3-report.md#3-components-classes-and-database-design) · [4. Sequence Diagrams](docs/stage-3-report.md#4-sequence-diagrams) · [5. API Specifications](docs/stage-3-report.md#5-api-specifications) · [6. SCM and QA Plans](docs/stage-3-report.md#6-scm-and-qa-plans) · [7. Technical Justifications](docs/stage-3-report.md#7-technical-justifications) |
-| 4 | [Trello board](https://trello.com/b/JhIu8WfB/gas-monitor-stage-4) · [OpenAPI specification](backend/docs/openapi.yaml) · [Firmware](firmware/README.md) |
+| 4 | [MVP Development and Execution Report](docs/stage-4-report.md) (sprint plan, reviews, retrospectives, bugs, test results) · [Trello board](https://trello.com/b/JhIu8WfB/gas-monitor-stage-4) · [OpenAPI specification](backend/docs/openapi.yaml) · [Firmware](firmware/README.md) |
 
 ## Project Timeline (2026)
 
