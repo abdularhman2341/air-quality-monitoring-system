@@ -6,7 +6,7 @@ import { renderPage, apiError, html } from './setup'
 const api = vi.hoisted(() => ({ listDevices: vi.fn(), readings: vi.fn(), alerts: vi.fn() }))
 vi.mock('../../src/api/client', () => ({ api }))
 vi.mock('../../src/realtime/socketClient', () => ({ onLiveUpdate: () => () => {} }))
-const { default: Dashboard } = await import('../../src/pages/Dashboard')
+const { default: Dashboard } = await import('../../src/pages/dashboard/Dashboard')
 
 const NOW = new Date('2026-11-21T12:00:00Z')
 const KITCHEN = {
@@ -141,5 +141,23 @@ describe('Dashboard alerts card when the alerts are not known (F3)', () => {
     expect(card.textContent).not.toContain('No active alerts')
     expect(card.textContent).not.toContain('Everything looks normal.')
     expect(card.textContent).toContain('Loading…')
+  })
+})
+
+// Found by mutation testing during the split: these three details had no test.
+describe('Dashboard details pinned before the split', () => {
+  it('an online device in an alarm pulses its dot and still says online', async () => {
+    api.listDevices.mockResolvedValue([{ ...KITCHEN, latest: { ...KITCHEN.latest, alarm_active: true } }])
+    const { container } = renderPage(<Dashboard />)
+    await flush()
+    expect(html(container.querySelector('.status-hero'), { outer: true })).toMatchSnapshot()
+    expect(container.querySelector('.info-card .info-title').textContent).toBe('Online')
+  })
+
+  it('the unknown alert status is written in the warning color', async () => {
+    api.alerts.mockRejectedValue(apiError('DATABASE_UNAVAILABLE', 'Database is unavailable.', 503))
+    renderPage(<Dashboard />)
+    await flush()
+    expect(html(alertsCard(), { outer: true })).toMatchSnapshot()
   })
 })

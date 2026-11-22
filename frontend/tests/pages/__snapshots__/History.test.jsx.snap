@@ -1,0 +1,87 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`History CSV export > exports the readings of the device on screen 1`] = `
+[
+  [
+    "readings-A4CF123B9E01.csv",
+    [
+      "reading_time",
+      "device",
+      "lpg_ppm_est",
+      "alarm_active",
+    ],
+    [
+      [
+        "2026-11-21T11:59:00Z",
+        "Kitchen",
+        1300,
+        true,
+      ],
+      [
+        "2026-11-21T11:58:00Z",
+        "Kitchen",
+        120,
+        false,
+      ],
+    ],
+  ],
+]
+`;
+
+exports[`History CSV export > exports up to 1000 alerts of the same filter with device names 1`] = `
+[
+  [
+    "alerts.csv",
+    [
+      "device",
+      "device_id",
+      "started_at",
+      "ended_at",
+      "duration_seconds",
+      "peak_lpg_ppm_est",
+      "threshold_ppm",
+    ],
+    [
+      [
+        "Kitchen",
+        "A4CF123B9E01",
+        "2026-11-21T11:30:00Z",
+        "",
+        "",
+        1450,
+        1000,
+      ],
+      [
+        "A4:CF:12:3B:9E:7F",
+        "A4CF123B9E7F",
+        "2026-11-20T08:00:00Z",
+        "2026-11-20T09:05:30Z",
+        3930,
+        1200,
+        1000,
+      ],
+      [
+        "FFFFFFFFFFFF",
+        "FFFFFFFFFFFF",
+        "2026-11-19T08:00:00Z",
+        "2026-11-19T08:00:42Z",
+        42,
+        1010.4,
+        1000,
+      ],
+    ],
+  ],
+]
+`;
+
+exports[`History alerts tab > pages through more than 50 rows 1`] = `"<div class="pager"><span>1–50 of 120</span><button class="btn btn-outline" disabled="" type="button">Previous</button><button class="btn btn-outline" type="button">Next</button></div>"`;
+
+exports[`History alerts tab > pages through more than 50 rows 2`] = `"<div class="pager"><span>101–120 of 120</span><button class="btn btn-outline" type="button">Previous</button><button class="btn btn-outline" disabled="" type="button">Next</button></div>"`;
+
+exports[`History alerts tab > renders the same page in English and Arabic 1`] = `"<div class="history"><div class="page-head"><div><h1>History &amp; Alerts</h1><p>Leak episodes and raw readings for your sensors</p></div><div class="segmented" role="tablist"><button aria-selected="true" role="tab" type="button">Alerts</button><button aria-selected="false" role="tab" type="button">Readings</button></div></div><div class="filters card"><label class="filter-device">Device<select><option value="all">All devices</option><option value="A4CF123B9E01">Kitchen</option><option value="A4CF123B9E7F">A4:CF:12:3B:9E:7F</option></select></label><div class="filter-range">Period<div class="range-buttons"><button aria-pressed="false" type="button">24 h</button><button aria-pressed="false" type="button">7 days</button><button aria-pressed="true" type="button">30 days</button></div></div><button class="btn btn-outline export" type="button">Export CSV</button></div><div class="table-card card"><table><thead><tr><th>Device</th><th>Started</th><th>Duration</th><th class="num">Peak (ppm)</th><th>Status</th></tr></thead><tbody><tr><td class="strong">Kitchen</td><td class="muted">21 Nov, 11:30</td><td class="muted">Ongoing</td><td class="num strong danger">1,450</td><td><span class="chip chip-danger">Active</span></td></tr><tr><td class="strong">A4:CF:12:3B:9E:7F</td><td class="muted">20 Nov, 08:00</td><td class="muted">1 h 5 min</td><td class="num strong ">1,200</td><td><span class="chip chip-neutral">Ended</span></td></tr><tr><td class="strong">FFFFFFFFFFFF</td><td class="muted">19 Nov, 08:00</td><td class="muted">42 s</td><td class="num strong ">1,010</td><td><span class="chip chip-neutral">Ended</span></td></tr></tbody></table></div></div>"`;
+
+exports[`History alerts tab > renders the same page in English and Arabic 2`] = `"<div class="history"><div class="page-head"><div><h1>السجل والتنبيهات</h1><p>حوادث التسرّب والقراءات الخام لحساساتك</p></div><div class="segmented" role="tablist"><button aria-selected="true" role="tab" type="button">التنبيهات</button><button aria-selected="false" role="tab" type="button">القراءات</button></div></div><div class="filters card"><label class="filter-device">الجهاز<select><option value="all">كل الأجهزة</option><option value="A4CF123B9E01">Kitchen</option><option value="A4CF123B9E7F">A4:CF:12:3B:9E:7F</option></select></label><div class="filter-range">الفترة<div class="range-buttons"><button aria-pressed="false" type="button">24 ساعة</button><button aria-pressed="false" type="button">7 أيام</button><button aria-pressed="true" type="button">30 يوماً</button></div></div><button class="btn btn-outline export" type="button">تصدير CSV</button></div><div class="table-card card"><table><thead><tr><th>الجهاز</th><th>البداية</th><th>المدة</th><th class="num">الذروة (ppm)</th><th>الحالة</th></tr></thead><tbody><tr><td class="strong">Kitchen</td><td class="muted">21 نوفمبر، 11:30</td><td class="muted">مستمر</td><td class="num strong danger">1,450</td><td><span class="chip chip-danger">نشط</span></td></tr><tr><td class="strong">A4:CF:12:3B:9E:7F</td><td class="muted">20 نوفمبر، 08:00</td><td class="muted">1 س 5 د</td><td class="num strong ">1,200</td><td><span class="chip chip-neutral">انتهى</span></td></tr><tr><td class="strong">FFFFFFFFFFFF</td><td class="muted">19 نوفمبر، 08:00</td><td class="muted">42 ث</td><td class="num strong ">1,010</td><td><span class="chip chip-neutral">انتهى</span></td></tr></tbody></table></div></div>"`;
+
+exports[`History alerts tab > shows loading until the answer, then a failed request as an error 1`] = `"<div class="table-card card"><p class="table-message" role="alert">Database is unavailable.</p></div>"`;
+
+exports[`History readings tab > shows the first device when the filter is all, without an all option 1`] = `"<div class="history"><div class="page-head"><div><h1>History &amp; Alerts</h1><p>Leak episodes and raw readings for your sensors</p></div><div class="segmented" role="tablist"><button aria-selected="false" role="tab" type="button">Alerts</button><button aria-selected="true" role="tab" type="button">Readings</button></div></div><div class="filters card"><label class="filter-device">Device<select><option value="A4CF123B9E01">Kitchen</option><option value="A4CF123B9E7F">A4:CF:12:3B:9E:7F</option></select></label><div class="filter-range">Period<div class="range-buttons"><button aria-pressed="false" type="button">24 h</button><button aria-pressed="false" type="button">7 days</button><button aria-pressed="true" type="button">30 days</button></div></div><button class="btn btn-outline export" type="button">Export CSV</button></div><div class="table-card card"><table><thead><tr><th>Time</th><th>Device</th><th class="num">ppm (estimated)</th><th>Status</th></tr></thead><tbody><tr><td class="muted">21 Nov, 11:59:00</td><td class="strong">Kitchen</td><td class="num strong danger">1,300</td><td><span class="chip chip-danger">Above threshold</span></td></tr><tr><td class="muted">21 Nov, 11:58:00</td><td class="strong">Kitchen</td><td class="num strong safe">120</td><td><span class="chip chip-safe">Safe</span></td></tr></tbody></table></div></div>"`;

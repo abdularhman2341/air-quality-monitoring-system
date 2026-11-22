@@ -4,7 +4,7 @@ import AdminUsers from './AdminUsers'
 import AdminDevices from './AdminDevices'
 import AdminAlerts from './AdminAlerts'
 import AdminLog from './AdminLog'
-import '../History.css'
+import '../history/History.css'
 import './Admin.css'
 
 const TABS = {
