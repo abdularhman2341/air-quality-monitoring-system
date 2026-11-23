@@ -42,9 +42,9 @@ function errorCode(err, status) {
 //   (400): the code BAD_REQUEST.
 // - Anything else: 500 INTERNAL_ERROR, logged in full; the client gets no
 //   details.
-// `next` is unused but must stay: Express treats a function with four
+// `_next` is unused but must stay: Express treats a function with four
 // parameters as an error handler.
-function errorHandler(err, req, res, next) {
+function errorHandler(err, req, res, _next) {
   if (isDatabaseUnavailable(err)) {
     return databaseUnavailable(req, res);
   }

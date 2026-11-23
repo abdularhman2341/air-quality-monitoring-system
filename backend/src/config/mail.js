@@ -16,7 +16,7 @@ if (driver === 'resend' && !apiKey) {
 }
 
 if (driver === 'resend' && !from) {
-  throw new Error('MAIL_DRIVER is "resend" but MAIL_FROM is not set. Example: AQMS <onboarding@resend.dev>');
+  throw new Error('MAIL_DRIVER is "resend" but MAIL_FROM is not set. Example: Gas Monitor <onboarding@resend.dev>');
 }
 
 const timeoutMs = Number(process.env.MAIL_TIMEOUT_MS || 10000);

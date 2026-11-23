@@ -89,3 +89,26 @@ describe('Dashboard readings chart', () => {
     expect(axis.domain).toEqual([0, 1800])
   })
 })
+
+// F13: the axis and the tooltip showed the time only, so readings from
+// yesterday looked like today's. The sample time (21 Nov 11:59) is today in
+// the tests above; here the clock is a day later.
+describe('Dashboard chart times from an earlier day (F13)', () => {
+  const formatters = (container) => ['XAxis', 'Tooltip'].map((name) => {
+    const props = JSON.parse(container.querySelector(`[data-part="${name}"]`).dataset.props)
+    return props.tickFormatter || props.labelFormatter
+  })
+
+  it('show the date as well as the time', async () => {
+    vi.setSystemTime(new Date('2026-11-22T09:00:00Z'))
+    const { container } = renderPage(<Dashboard />)
+    await flush()
+    for (const text of formatters(container)) expect(text).toMatch(/^fn\("21 Nov, 11:59:00"/)
+  })
+
+  it('today shows the time only', async () => {
+    const { container } = renderPage(<Dashboard />)
+    await flush()
+    for (const text of formatters(container)) expect(text).toMatch(/^fn\("11:59:00"/)
+  })
+})

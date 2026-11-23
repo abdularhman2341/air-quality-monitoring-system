@@ -122,7 +122,7 @@ class Device extends BaseModel {
       where: { device_id: deviceId },
       select: { owner_id: true, pairing_code_hash: true },
     });
-    const codeMatches = device ? await bcrypt.compare(pairingCode, device.pairing_code_hash) : false;
+    const codeMatches = device ? await bcrypt.compare(Device.normalizePairingCode(pairingCode), device.pairing_code_hash) : false;
     if (!codeMatches) {
       throw new HttpError(404, 'DEVICE_NOT_FOUND', 'No device matches this MAC address and pairing code.');
     }
@@ -184,13 +184,14 @@ class Device extends BaseModel {
 
   // 'online' only changes an offline device, so online_since keeps the time
   // of the first connection when 'online' is sent again (it is retained).
+  // Returns true when the device was offline and is now online.
   static async setConnectionState(deviceId, state) {
     if (state === 'online') {
-      await prisma.device.updateMany({
+      const { count } = await prisma.device.updateMany({
         where: { device_id: deviceId, connection_state: 'offline' },
         data: { connection_state: 'online', online_since: new Date() },
       });
-      return;
+      return count > 0;
     }
     await prisma.device.updateMany({
       where: { device_id: deviceId },
@@ -215,6 +216,15 @@ class Device extends BaseModel {
 
   async getLatestReading() {
     return Reading.findLatest(this.device_id);
+  }
+
+  // Codes are capitals printed as ABCD-EFGH (newPairingCode), so lowercase,
+  // spaces and a missing or misplaced dash are tidied before comparing (C1).
+  // It adds no guesses: a lowercase code was never a valid one. Older
+  // 6-digit codes have no dash and stay as typed.
+  static normalizePairingCode(code) {
+    const compact = String(code).toUpperCase().replace(/[\s-]/g, '');
+    return compact.length === 8 ? `${compact.slice(0, 4)}-${compact.slice(4)}` : compact;
   }
 
   // crypto.randomInt, not Math.random: the code must not be guessable.

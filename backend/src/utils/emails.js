@@ -3,7 +3,7 @@
 
 function passwordResetEmail(code, minutes) {
   return {
-    subject: `${code} رمز استعادة كلمة المرور | AQMS password reset code`,
+    subject: `${code} رمز استعادة كلمة المرور | Gas Monitor password reset code`,
     text: [
       `رمز استعادة كلمة المرور: ${code}`,
       `الرمز صالح لمدة ${minutes} دقيقة ويُستخدم مرة واحدة.`,
@@ -18,7 +18,7 @@ function passwordResetEmail(code, minutes) {
 
 function passwordChangedEmail() {
   return {
-    subject: 'تم تغيير كلمة المرور | Your AQMS password was changed',
+    subject: 'تم تغيير كلمة المرور | Your Gas Monitor password was changed',
     text: [
       'تم تغيير كلمة مرور حسابك، وتم تسجيل الخروج من كل الأجهزة.',
       'إذا لم تكن أنت من غيّرها، استعد كلمة المرور فورًا من صفحة تسجيل الدخول.',

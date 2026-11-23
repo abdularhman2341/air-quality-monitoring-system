@@ -21,7 +21,8 @@ class AlertService {
     const openAlert = await Alert.findOpen(deviceId);
 
     if (event.event === 'alarm_on') {
-      if (openAlert) return openAlert;
+      if (openAlert) return this.raisePeak(openAlert, event.lpg_ppm_est);
+      if (await this.isLateRepeat(deviceId, time)) return null;
       const alert = await Alert.open(deviceId, event.lpg_ppm_est, event.threshold_ppm, time);
       console.log(`MQTT ${deviceId} alert ${alert.id} opened`);
       realtimeGateway.emitToOwner(ownerId, 'alert:new', alert);
@@ -31,6 +32,18 @@ class AlertService {
 
     if (!openAlert) return null;
     return this.closeAlert(openAlert, time, ownerId);
+  }
+
+  // QoS 1 can deliver an alarm_on again after its alarm_off was handled (the
+  // acknowledgement was lost). The copy has the same time as the start of
+  // the device's newest alert, which is already closed, so it must not open
+  // a new alert that no alarm_off would ever close (B4). An alarm_on with a
+  // different time is a new alarm, even if it is older than the last end:
+  // after a power cut a reading closes the alert (issue #42), and the next
+  // alarm_on may carry a time from before that reading.
+  async isLateRepeat(deviceId, time) {
+    const latest = await Alert.findLatest(deviceId);
+    return Boolean(latest && latest.ended_at && latest.started_at.getTime() === time.getTime());
   }
 
   // A device that loses power during an alarm never sends alarm_off, and it
@@ -95,6 +108,13 @@ class AlertService {
       device, peakPpm: alert.peak_lpg_ppm_est, endedAt: alert.ended_at, appUrl: appUrl(),
     });
     mailService.sendInBackground(owner.email, email, 'gas alert ended');
+  }
+
+  // A second alarm_on while the alert is open carries a new level, which can
+  // be the new peak (B8). Alert.updatePeak only ever raises it.
+  async raisePeak(openAlert, lpgPpmEst) {
+    await Alert.updatePeak(openAlert.device_id, lpgPpmEst);
+    return openAlert;
   }
 
   async updatePeak(deviceId, lpgPpmEst) {

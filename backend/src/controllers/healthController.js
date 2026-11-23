@@ -9,7 +9,7 @@ async function getHealth(req, res) {
 
   try {
     await prisma.$queryRaw`SELECT 1`;
-  } catch (err) {
+  } catch {
     return res.status(503).json({ status: 'error', database: 'disconnected', mqtt });
   }
 

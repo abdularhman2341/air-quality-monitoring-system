@@ -47,6 +47,38 @@ describe('readings', () => {
     expect(await prisma.reading.count()).toBe(1);
   });
 
+  // B5: an optional sensor field the database would refuse is stored as
+  // null, and the reading itself (gas level and alarm) is kept.
+  test.each([
+    ['sensor_raw_adc above 4095', { sensor_raw_adc: 4096 }, { sensor_raw_adc: null }],
+    ['sensor_raw_adc below 0', { sensor_raw_adc: -1 }, { sensor_raw_adc: null }],
+    ['seq too big for the column', { seq: 2 ** 31 }, { seq: null }],
+    ['seq below the column range', { seq: -(2 ** 31) - 1 }, { seq: null }],
+  ])('a reading with %s is kept, that field as null (B5)', async (_name, fields, stored) => {
+    await publish(MAC, 'readings', { lpg_ppm_est: 250, alarm_active: false, ts: now(), ...fields });
+    const reading = await prisma.reading.findFirst();
+    expect(reading).toMatchObject({ lpg_ppm_est: 250, ...stored });
+  });
+
+  test('the edges of the optional ranges are kept as sent (B5)', async () => {
+    await publish(MAC, 'readings', { seq: 2 ** 31 - 1, sensor_raw_adc: 4095, lpg_ppm_est: 1, alarm_active: false, ts: now() });
+    await publish(MAC, 'readings', {
+      seq: -(2 ** 31), sensor_raw_adc: 0, lpg_ppm_est: 2, alarm_active: false, ts: new Date(Date.now() + 1000).toISOString(),
+    });
+    const rows = await prisma.reading.findMany({ orderBy: { lpg_ppm_est: 'asc' } });
+    expect(rows.map((r) => [r.seq, r.sensor_raw_adc])).toEqual([[2 ** 31 - 1, 4095], [-(2 ** 31), 0]]);
+  });
+
+  test('a gas level of zero is still saved (B5)', async () => {
+    await publish(MAC, 'readings', { lpg_ppm_est: 0, alarm_active: false, ts: now() });
+    expect(await prisma.reading.count()).toBe(1);
+  });
+
+  test('a negative gas level can never be saved, so it is dropped and acknowledged (B5)', async () => {
+    await expect(publish(MAC, 'readings', { lpg_ppm_est: -1, alarm_active: false, ts: now() })).resolves.toBeUndefined();
+    expect(await prisma.reading.count()).toBe(0);
+  });
+
   test('a device clock far from server time falls back to the server time', async () => {
     await publish(MAC, 'readings', { lpg_ppm_est: 1, alarm_active: false, ts: '1970-01-01T00:00:00Z' });
     const reading = await prisma.reading.findFirst();
@@ -100,6 +132,77 @@ describe('alerts', () => {
   test('alarm_off without an open alert is ignored (see issue #41)', async () => {
     await publish(MAC, 'alarms', alarm('alarm_off', 700));
     expect(await prisma.alert.count()).toBe(0);
+  });
+
+  // B4: QoS 1 can deliver alarm_on again after alarm_off was handled.
+  test('an alarm_on delivered again after alarm_off does not open a new alert (B4)', async () => {
+    const on = alarm('alarm_on', 1200);
+    await publish(MAC, 'alarms', on);
+    await publish(MAC, 'alarms', { ...alarm('alarm_off', 700), ts: new Date(Date.now() + 1000).toISOString() });
+    await publish(MAC, 'alarms', on);
+    expect(await prisma.alert.count()).toBe(1);
+    expect(await prisma.alert.count({ where: { ended_at: null } })).toBe(0);
+  });
+
+  test('the copy is recognised by its time, also when the alert was closed by a reading (B4)', async () => {
+    const on = alarm('alarm_on', 1200);
+    await publish(MAC, 'alarms', on);
+    await publish(MAC, 'readings', { lpg_ppm_est: 90, alarm_active: false, ts: new Date(Date.now() + 1000).toISOString() });
+    await publish(MAC, 'alarms', on);
+    const next = new Date(Date.parse(on.ts) + 1).toISOString();
+    await publish(MAC, 'alarms', { ...on, ts: next });
+    const open = await prisma.alert.findMany({ where: { ended_at: null } });
+    expect(open.map((a) => a.started_at.toISOString())).toEqual([next]);
+  });
+
+  test('a new alarm_on after the last alert ended still opens an alert (B4)', async () => {
+    await publish(MAC, 'alarms', alarm('alarm_on', 1200));
+    const end = new Date(Date.now() + 1000);
+    await publish(MAC, 'alarms', { ...alarm('alarm_off', 700), ts: end.toISOString() });
+    await publish(MAC, 'alarms', { ...alarm('alarm_on', 1400), ts: new Date(end.getTime() + 1).toISOString() });
+    expect(await prisma.alert.count()).toBe(2);
+    const open = await prisma.alert.findFirst({ where: { ended_at: null } });
+    expect(open.peak_lpg_ppm_est).toBe(1400);
+  });
+
+  // B8: a second alarm_on while the alert is open carries a new level.
+  test('a higher alarm_on during an open alert raises its peak, a lower one does not (B8)', async () => {
+    await publish(MAC, 'alarms', alarm('alarm_on', 1200));
+    await publish(MAC, 'alarms', { ...alarm('alarm_on', 1600), ts: new Date(Date.now() + 1000).toISOString() });
+    await publish(MAC, 'alarms', { ...alarm('alarm_on', 1300), ts: new Date(Date.now() + 2000).toISOString() });
+    const alerts = await prisma.alert.findMany();
+    expect(alerts.map((a) => a.peak_lpg_ppm_est)).toEqual([1600]);
+  });
+
+  test('a copy of the newest of two closed alerts is ignored (B4)', async () => {
+    const t = Date.now();
+    const at = (ms) => new Date(t + ms).toISOString();
+    await publish(MAC, 'alarms', { ...alarm('alarm_on', 1200), ts: at(0) });
+    await publish(MAC, 'alarms', { ...alarm('alarm_off', 700), ts: at(1000) });
+    const second = { ...alarm('alarm_on', 1300), ts: at(2000) };
+    await publish(MAC, 'alarms', second);
+    await publish(MAC, 'alarms', { ...alarm('alarm_off', 700), ts: at(3000) });
+    await publish(MAC, 'alarms', second);
+    expect(await prisma.alert.count()).toBe(2);
+  });
+
+  test('an alarm_on older than the last alert is a new alarm, not a copy (B4)', async () => {
+    const t = Date.now();
+    await publish(MAC, 'alarms', { ...alarm('alarm_on', 1200), ts: new Date(t).toISOString() });
+    await publish(MAC, 'alarms', { ...alarm('alarm_off', 700), ts: new Date(t + 1000).toISOString() });
+    await publish(MAC, 'alarms', { ...alarm('alarm_on', 1300), ts: new Date(t - 10000).toISOString() });
+    expect(await prisma.alert.count()).toBe(2);
+  });
+
+  test('the repeat check looks only at this device (B4)', async () => {
+    const OTHER = 'AAAAAAAAAA05';
+    const code = await registerDevice(OTHER, 'WXYZ-QRST');
+    await linkDevice(await signUp(), OTHER, code);
+    const on = alarm('alarm_on', 1200);
+    await publish(OTHER, 'alarms', on);
+    await publish(OTHER, 'alarms', { ...alarm('alarm_off', 700), ts: new Date(Date.now() + 1000).toISOString() });
+    await publish(MAC, 'alarms', on);
+    expect(await prisma.alert.count({ where: { device_id: MAC, ended_at: null } })).toBe(1);
   });
 });
 

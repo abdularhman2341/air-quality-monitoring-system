@@ -24,6 +24,15 @@ class Alert extends BaseModel {
     return row ? new Alert(row) : null;
   }
 
+  // The start and end of this device's newest alert, or null when it has none.
+  static async findLatest(deviceId) {
+    return prisma.alert.findFirst({
+      where: { device_id: deviceId },
+      select: { started_at: true, ended_at: true },
+      orderBy: [{ started_at: 'desc' }, { id: 'desc' }],
+    });
+  }
+
   static async open(deviceId, lpgPpmEst, thresholdPpm, startedAt) {
     const row = await prisma.alert.create({
       data: {
@@ -131,11 +140,15 @@ class Alert extends BaseModel {
 
   // The owner check is in the query itself: only alerts of the user's own
   // devices can match. undefined filters are ignored by Prisma.
+  // An alert is in the range when it overlaps it: it started by `to` and was
+  // still going at `from` (open, or ended at or after it). Comparing only
+  // started_at with `from` hid a leak that began before the range (F14).
   static async getHistory(userId, { deviceId, from, to, page, limit }) {
     const where = {
       device: { owner_id: Number(userId) },
       device_id: deviceId ?? undefined,
-      started_at: { gte: from ?? undefined, lte: to ?? undefined },
+      started_at: { lte: to ?? undefined },
+      OR: from ? [{ ended_at: null }, { ended_at: { gte: from } }] : undefined,
     };
     const [rows, total] = await Promise.all([
       prisma.alert.findMany({

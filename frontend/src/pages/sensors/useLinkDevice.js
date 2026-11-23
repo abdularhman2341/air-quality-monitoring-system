@@ -4,14 +4,18 @@ import { api } from '../../api/client'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { useToast } from '../../toast/ToastContext'
 
+// The MAC without the separators people type between the pairs (spaces,
+// dots, colons, dashes). The server accepts only colons or dashes, so the
+// page sends the 12 digits (F7). Any other character stays, so a typo such as
+// a G is refused instead of dropped.
 function cleanMac(value) {
-  return value.toUpperCase().replace(/[^0-9A-F]/g, '')
+  return value.toUpperCase().replace(/[\s.:-]/g, '')
 }
 
 // The first problem with the form as a translation key, checked in the order
 // of the fields; '' when there is none. The server checks everything again.
 function firstProblem({ macAddress, pairingCode, name }) {
-  if (cleanMac(macAddress).length !== 12) {
+  if (!/^[0-9A-F]{12}$/.test(cleanMac(macAddress))) {
     return 'addSensor.errorMac'
   }
   if (!pairingCode.trim()) {
@@ -23,7 +27,7 @@ function firstProblem({ macAddress, pairingCode, name }) {
 // An empty location is left out of the request rather than sent as ''.
 function toRequest({ macAddress, pairingCode, name, location }) {
   return {
-    mac_address: macAddress.trim(),
+    mac_address: cleanMac(macAddress),
     pairing_code: pairingCode.trim(),
     name: name.trim(),
     location: location.trim() || undefined

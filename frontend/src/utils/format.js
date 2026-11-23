@@ -38,6 +38,16 @@ export function formatDateTime(value, locale, withSeconds = false) {
   })
 }
 
+function isToday(value) {
+  return new Date(value).toDateString() === new Date().toDateString()
+}
+
+// A moment shown on its own: today's shows the time only, an older one the
+// date too, so yesterday 23:00 never reads as today (F13).
+export function formatMoment(value, locale) {
+  return isToday(value) ? formatTime(value, locale) : formatDateTime(value, locale, true)
+}
+
 export function formatDate(value, locale) {
   return new Date(value).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
 }

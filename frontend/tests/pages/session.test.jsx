@@ -104,6 +104,47 @@ describe('AuthProvider', () => {
     expect(state().user).toBe(null)
   })
 
+  // F18: logout waited for the server, so a hanging request left the user
+  // signed in with a button that did nothing. The request is still sent, with
+  // the token, but the session ends here at once.
+  it('logout ends the session at once, even if the server never answers', async () => {
+    mocks.api.login.mockResolvedValue({ token: 'new', user: USER })
+    let tokenSent
+    mocks.api.logout.mockImplementation(() => {
+      tokenSent = mocks.client.getToken()
+      return new Promise(() => {})
+    })
+    render(<AuthProvider><Probe /></AuthProvider>)
+    await act(() => ctx.login('a@b.c', 'pw'))
+    act(() => { ctx.logout() })
+    await flush()
+    expect(tokenSent).toBe('new')
+    expect(state().user).toBe(null)
+    expect(mocks.store.has('t')).toBe(false)
+  })
+
+  it('a late answer to an old logout does not sign out the next sign-in', async () => {
+    mocks.api.login.mockResolvedValue({ token: 'new', user: USER })
+    let answer
+    mocks.api.logout.mockReturnValue(new Promise((resolve) => { answer = resolve }))
+    render(<AuthProvider><Probe /></AuthProvider>)
+    await act(() => ctx.login('a@b.c', 'pw'))
+    act(() => { ctx.logout() })
+    await act(() => ctx.login('a@b.c', 'pw'))
+    await act(async () => answer(null))
+    expect(state().user).toEqual(USER)
+    expect(mocks.store.get('t')).toBe('new')
+  })
+
+  it('logout resolves when the server refuses, so the button never throws', async () => {
+    mocks.api.login.mockResolvedValue({ token: 'new', user: USER })
+    mocks.api.logout.mockRejectedValue(new Error('offline'))
+    render(<AuthProvider><Probe /></AuthProvider>)
+    await act(() => ctx.login('a@b.c', 'pw'))
+    await expect(act(() => ctx.logout())).resolves.toBeUndefined()
+    expect(state().user).toBe(null)
+  })
+
   it('register signs nobody in; activate does', async () => {
     mocks.api.register.mockResolvedValue({ email: 'a@b.c' })
     mocks.api.confirmSignup.mockResolvedValue({ token: 'tok', user: USER })

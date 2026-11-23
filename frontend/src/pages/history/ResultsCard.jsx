@@ -1,26 +1,38 @@
 import { useLanguage } from '../../i18n/LanguageContext'
 import { PAGE_SIZE } from './useHistoryQuery'
 import { AlertsTable, ReadingsTable } from './HistoryTables'
+import { TAB_PANEL_ID, tabId } from './historyTabs'
 
-// Why the table is empty: still loading, no alerts, no device to read from,
-// or no readings in the period.
+// Why the table is empty: still loading (the rows, or the device list the
+// readings tab needs), no alerts, no device to read from, or no readings in
+// the period.
 function emptyText({ loading, tab }, devices, t) {
-  if (loading) {
+  if (loading || (tab === 'readings' && devices.loading)) {
     return t('common.loading')
   }
   if (tab === 'alerts') {
     return t('history.noAlerts')
   }
-  return devices.length === 0 ? t('history.noDevices') : t('history.noReadings')
+  return devices.list.length === 0 ? t('history.noDevices') : t('history.noReadings')
+}
+
+// The readings tab needs a device. When the device list failed and there is
+// none, that error is the answer, not "link a sensor" (F12). The alerts tab
+// asks the server for all devices and works without the list.
+function errorOf({ tab, error }, devices) {
+  if (error) return error
+  return tab === 'readings' && devices.list.length === 0 ? devices.error : null
 }
 
 // The table of the chosen tab, or the error, or why it is empty, and the
-// pager when there are more rows than one page.
+// pager when there are more rows than one page. It is the tab panel of the
+// tabs in HistoryHead (F17).
 function ResultsCard({ query, devices, deviceName }) {
   const { t, errorText } = useLanguage()
-  const { tab, rows, error } = query
+  const { tab, rows } = query
+  const error = errorOf(query, devices)
   return (
-    <div className="table-card card">
+    <div className="table-card card" role="tabpanel" id={TAB_PANEL_ID} aria-labelledby={tabId(tab)}>
       {error && <p className="table-message" role="alert">{errorText(error)}</p>}
       {!error && tab === 'alerts' && <AlertsTable rows={rows} deviceName={deviceName} />}
       {!error && tab === 'readings' && <ReadingsTable rows={rows} name={deviceName(query.readingsDevice)} />}
