@@ -128,7 +128,7 @@ class MqttSubscriberService {
     let message;
     try {
       message = JSON.parse(payload.toString());
-    } catch (err) {
+    } catch {
       return this.drop(topic, 'payload is not valid JSON');
     }
     if (message === null || typeof message !== 'object') return this.drop(topic, 'payload must be a JSON object');

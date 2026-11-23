@@ -10,6 +10,12 @@ const DEMO_DEVICES = [
   { id: 'A4CF123B9E7F', pairingCode: '735104', state: 'offline', basePpm: 60, alarmAt: 3 },
 ];
 
+// The demo devices have known pairing codes, so on production anyone could
+// link them (B11). Railway sets RAILWAY_ENVIRONMENT_NAME on every service.
+function isProduction(env) {
+  return env.NODE_ENV === 'production' || Boolean(env.RAILWAY_ENVIRONMENT_NAME);
+}
+
 const READINGS_PER_DEVICE = 30;
 const INTERVAL_MS = 60 * 1000;
 
@@ -67,6 +73,11 @@ async function seed() {
       console.log(`${device.id} created with ${READINGS_PER_DEVICE} readings (pairing code ${device.pairingCode})`);
     }
   });
+}
+
+if (isProduction(process.env)) {
+  console.error('Refusing to add demo devices on production.');
+  process.exit(1);
 }
 
 seed()

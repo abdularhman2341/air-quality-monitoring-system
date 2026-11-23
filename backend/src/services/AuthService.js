@@ -73,7 +73,7 @@ class AuthService {
     let payload;
     try {
       payload = jwt.verify(token, jwtSecret);
-    } catch (err) {
+    } catch {
       throw unauthorized('INVALID_TOKEN', 'Your session is invalid or has expired. Please sign in again.');
     }
     const usedSince = new Date(Date.now() - sessionIdleMinutes * 60 * 1000);

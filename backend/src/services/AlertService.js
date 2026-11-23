@@ -21,7 +21,7 @@ class AlertService {
     const openAlert = await Alert.findOpen(deviceId);
 
     if (event.event === 'alarm_on') {
-      if (openAlert) return openAlert;
+      if (openAlert) return this.raisePeak(openAlert, event.lpg_ppm_est);
       if (await this.isLateRepeat(deviceId, time)) return null;
       const alert = await Alert.open(deviceId, event.lpg_ppm_est, event.threshold_ppm, time);
       console.log(`MQTT ${deviceId} alert ${alert.id} opened`);
@@ -108,6 +108,13 @@ class AlertService {
       device, peakPpm: alert.peak_lpg_ppm_est, endedAt: alert.ended_at, appUrl: appUrl(),
     });
     mailService.sendInBackground(owner.email, email, 'gas alert ended');
+  }
+
+  // A second alarm_on while the alert is open carries a new level, which can
+  // be the new peak (B8). Alert.updatePeak only ever raises it.
+  async raisePeak(openAlert, lpgPpmEst) {
+    await Alert.updatePeak(openAlert.device_id, lpgPpmEst);
+    return openAlert;
   }
 
   async updatePeak(deviceId, lpgPpmEst) {
