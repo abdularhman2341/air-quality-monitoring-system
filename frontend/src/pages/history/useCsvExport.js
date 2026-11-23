@@ -3,9 +3,12 @@ import { useLanguage } from '../../i18n/LanguageContext'
 import { useToast } from '../../toast/ToastContext'
 import { downloadCsv } from '../../utils/csv'
 
-// The backend's largest page (limit 1000), so an export holds the newest
-// 1000 rows of the chosen range.
+// The backend's largest page is 1000 rows, so the export asks page after
+// page. A file holds at most 20 pages (20,000 rows): a month of readings
+// (one every 5 s) is far more, and asking for all of it would hang the tab.
+// The toast says when the file holds only the newest rows (F5).
 const EXPORT_LIMIT = 1000
+const MAX_EXPORT_PAGES = 20
 const ALERT_COLUMNS = [
   'device', 'device_id', 'started_at', 'ended_at', 'duration_seconds', 'peak_lpg_ppm_est', 'threshold_ppm'
 ]
@@ -27,6 +30,28 @@ function saveCsv({ tab, readingsDevice }, rows, deviceName) {
   }
 }
 
+// Rows come newest first, so a row that arrives during the export pushes
+// one row onto the next page; a row already seen (same id) is skipped.
+async function fetchAllRows(query) {
+  const rows = []
+  const seen = new Set()
+  let total = 0
+  for (let page = 1; page <= MAX_EXPORT_PAGES; page += 1) {
+    const result = await query.fetchRows({ page, limit: EXPORT_LIMIT })
+    total = result.total
+    rows.push(...result.data.filter((row) => !seen.has(row.id)))
+    result.data.forEach((row) => seen.add(row.id))
+    if (result.data.length < EXPORT_LIMIT || page * EXPORT_LIMIT >= total) {
+      return { rows, total, complete: true }
+    }
+  }
+  return { rows, total, complete: false }
+}
+
+function exportedText(t, { rows, total, complete }) {
+  return complete ? t('history.exported') : t('history.exportedNewest', { count: rows.length, total })
+}
+
 // Downloads the current tab and filters as a CSV file, and says how it went
 // in a toast. exporting is true while the request runs.
 export function useCsvExport(query, deviceName) {
@@ -37,9 +62,9 @@ export function useCsvExport(query, deviceName) {
   async function exportCsv() {
     setExporting(true)
     try {
-      const result = await query.fetchRows({ page: 1, limit: EXPORT_LIMIT })
-      saveCsv(query, result.data, deviceName)
-      showToast(t('history.exported'))
+      const result = await fetchAllRows(query)
+      saveCsv(query, result.rows, deviceName)
+      showToast(exportedText(t, result))
     } catch (err) {
       showToast(errorText(err))
     } finally {

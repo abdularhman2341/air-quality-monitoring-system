@@ -359,3 +359,16 @@ select {
   text-align: center;
   color: var(--text-muted);
 }
+
+/* Text for screen readers only: kept out of sight, not out of the page. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

@@ -82,7 +82,7 @@ describe('AddSensor form', () => {
     fill({ 'MAC address': ' a4:cf:12:3b:9e:99 ', 'Pairing code': ' 482913 ', Name: ' Lab ', 'Location (optional)': '   ' })
     await submit()
     expect(api.linkDevice).toHaveBeenCalledWith({
-      mac_address: 'a4:cf:12:3b:9e:99', pairing_code: '482913', name: 'Lab', location: undefined,
+      mac_address: 'A4CF123B9E99', pairing_code: '482913', name: 'Lab', location: undefined,
     })
     expect(screen.getByRole('status').textContent).toBe('Sensor added')
     expect(screen.getByTestId('landing').textContent).toBe('{"selected":"A4CF123B9E99"}')
@@ -202,5 +202,31 @@ describe('AddSensor details pinned before the split', () => {
     await flush()
     expect(sensors().querySelectorAll('.sensor-row').length).toBe(2)
     expect(sensors().querySelector('.sensor-confirm')).toBeNull()
+  })
+})
+
+// F7: the server accepts only colons or dashes between the pairs, so a MAC
+// typed with spaces or dots was refused. The page now sends the 12 digits.
+describe('AddSensor MAC separators (F7)', () => {
+  it.each([
+    ['spaces', 'a4 cf 12 3b 9e 99'],
+    ['dots', 'A4CF.123B.9E99'],
+    ['dashes', 'a4-cf-12-3b-9e-99'],
+    ['colons', ' A4:CF:12:3B:9E:99 '],
+  ])('a MAC typed with %s is sent as its 12 hex digits', async (_name, typed) => {
+    renderAddSensor()
+    await flush()
+    fill({ 'MAC address': typed, 'Pairing code': '482913', Name: 'Lab' })
+    await submit()
+    expect(api.linkDevice).toHaveBeenCalledWith(expect.objectContaining({ mac_address: 'A4CF123B9E99' }))
+  })
+
+  it('a character that is not hex or a separator is refused, not dropped', async () => {
+    renderAddSensor()
+    await flush()
+    fill({ 'MAC address': 'A4CF123B9E0G1', 'Pairing code': '482913', Name: 'Lab' })
+    await submit()
+    expect(screen.getByRole('alert').textContent).toBe('Enter a valid MAC address, e.g. A4:CF:12:3B:9E:01.')
+    expect(api.linkDevice).not.toHaveBeenCalled()
   })
 })

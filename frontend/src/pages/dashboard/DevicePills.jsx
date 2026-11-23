@@ -3,6 +3,16 @@ import { useLanguage } from '../../i18n/LanguageContext'
 import { formatPpm } from '../../utils/format'
 import { STATE_COLORS, deviceState } from './deviceState'
 
+// The state in words on each button, so it is not told by color only (F6).
+// A normal device shows no word; screen readers still hear it (sr-only).
+const STATE_WORDS = {
+  safe: 'dashboard.pillSafe',
+  alert: 'dashboard.pillAlert',
+  warming: 'dashboard.pillWarming',
+  offline: 'dashboard.pillOffline',
+  lost: 'dashboard.pillLost'
+}
+
 // One button per device, each with its own state dot and last ppm, then a
 // link to add another sensor. The pressed button is the device on screen.
 function DevicePills({ devices, selectedId, onSelect }) {
@@ -18,6 +28,7 @@ function DevicePills({ devices, selectedId, onSelect }) {
 }
 
 function DevicePill({ device, pressed, onSelect }) {
+  const { t } = useLanguage()
   const state = deviceState(device)
   return (
     <button
@@ -29,6 +40,7 @@ function DevicePill({ device, pressed, onSelect }) {
       <span className="dot" style={{ background: STATE_COLORS[state].dot }} />
       <span className="pill-name">{device.name || device.mac_display}</span>
       <span className="pill-ppm">{device.latest ? formatPpm(device.latest.lpg_ppm_est) : '—'}</span>
+      <span className={state === 'safe' ? 'pill-state sr-only' : 'pill-state'}>{t(STATE_WORDS[state])}</span>
     </button>
   )
 }
