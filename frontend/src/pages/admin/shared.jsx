@@ -22,20 +22,26 @@ export function ConfirmBox({ message, confirmLabel, busy, onConfirm, onCancel, n
   )
 }
 
-// A pairing code is shown once: the server keeps only its hash.
-export function PairingCodeBox({ mac, code, onDone }) {
-  const { t } = useLanguage()
+// Copies text to the clipboard. copied says whether the last copy worked
+// (a browser may refuse it).
+function useCopy(text) {
   const [copied, setCopied] = useState(false)
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(code)
+      await navigator.clipboard.writeText(text)
       setCopied(true)
     } catch {
       setCopied(false)
     }
   }
+  return { copied, copy }
+}
 
+// A pairing code is shown once: the server keeps only its hash.
+export function PairingCodeBox({ mac, code, onDone }) {
+  const { t } = useLanguage()
+  const { copied, copy } = useCopy(code)
   return (
     <div className="pairing-box" role="status">
       <div className="pairing-label">{t('admin.devices.codeFor', { mac })}</div>
@@ -93,5 +99,40 @@ export function Pager({ page, total, onPage }) {
         {t('history.next')}
       </button>
     </div>
+  )
+}
+
+// The card around an admin table (a list from useAdminList): the error in
+// place of the table, why the table is empty, and the pager. head holds the
+// header cells and children the rows.
+export function TableCard({ list, head, empty, onPage = list.setPage, children }) {
+  const { t, errorText } = useLanguage()
+  const { error, loading, rows, page, total } = list
+  return (
+    <div className="table-card card">
+      {error && <p className="table-message" role="alert">{errorText(error)}</p>}
+      {!error && (
+        <table>
+          <thead>
+            <tr>{head}</tr>
+          </thead>
+          <tbody>{children}</tbody>
+        </table>
+      )}
+      {!error && rows.length === 0 && <p className="table-message">{loading ? t('common.loading') : empty}</p>}
+      <Pager page={page} total={total} onPage={onPage} />
+    </div>
+  )
+}
+
+// The last cell of an admin row: opens and closes the row's panel.
+export function ManageCell({ open, onToggle }) {
+  const { t } = useLanguage()
+  return (
+    <td className="admin-manage-cell">
+      <button type="button" className="btn btn-outline" aria-expanded={open} onClick={onToggle}>
+        {open ? t('admin.close') : t('admin.manage')}
+      </button>
+    </td>
   )
 }

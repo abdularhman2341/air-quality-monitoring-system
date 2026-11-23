@@ -19,7 +19,7 @@
       }
     ],
     "eslint/max-lines-per-function": [
-      "warn",
+      "error",
       {
         "max": 25,
         "skipBlankLines": true,
