@@ -18,7 +18,7 @@ function DeleteAccount() {
       openLabel={t('profile.deleteAccount')} open={form.open} onOpen={form.openForm}>
       <form className="form profile-subform" onSubmit={form.handleSubmit}>
         <Field label={t('profile.currentPassword')} type="password" value={form.password} onChange={form.setPassword}
-          autoComplete="current-password" maxLength={72} required autoFocus />
+          autoComplete="current-password" required autoFocus />
         <FormError error={form.error} />
         <FormButtons danger onCancel={form.close} busy={form.busy} disabled={!form.password}
           label={t('profile.deleteConfirm')} busyLabel={t('profile.deleting')} />

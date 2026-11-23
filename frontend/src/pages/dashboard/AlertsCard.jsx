@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../../i18n/LanguageContext'
-import { formatPpm, formatTime } from '../../utils/format'
+import { formatMoment, formatPpm } from '../../utils/format'
 
 // Only the newest alert is asked for: it is open when it has no ended_at.
 function openAlertOf(data) {
@@ -49,7 +49,7 @@ function AlertSummary({ openAlert }) {
       <p className="info-body">
         {openAlert
           ? t('dashboard.alarmSince', {
-            time: formatTime(openAlert.started_at, locale),
+            time: formatMoment(openAlert.started_at, locale),
             ppm: formatPpm(openAlert.peak_lpg_ppm_est)
           })
           : t('dashboard.allNormal')}

@@ -32,12 +32,14 @@ export function sessionActions(setUser, clearSession) {
     changePassword: async (currentPassword, newPassword) => {
       keepWithNewToken(await api.changePassword(currentPassword, newPassword))
     },
-    async logout() {
-      try {
-        await api.logout()
-      } finally {
-        clearSession()
-      }
+    // The session ends here at once; the server is told without waiting for
+    // it, so a hanging request no longer leaves the button doing nothing
+    // (F18). api.logout() reads the token as it starts, before it is
+    // cleared. A failed request is ignored, as before: this device is out.
+    logout() {
+      const told = api.logout().catch(() => {})
+      clearSession()
+      return told.then(() => {})
     },
   }
 }

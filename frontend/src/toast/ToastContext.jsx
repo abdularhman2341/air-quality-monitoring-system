@@ -3,7 +3,9 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 const ToastContext = createContext(null)
 
 // One short message at a time at the bottom of the screen; a new one
-// replaces the old one. role="status" lets screen readers announce it.
+// replaces the old one. The role="status" region is always on the page and
+// only its text changes: screen readers announce changes to a live region
+// that already exists, and may miss one created with its text (F15).
 export function ToastProvider({ children }) {
   const [message, setMessage] = useState('')
   const timer = useRef(null)
@@ -19,7 +21,7 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={showToast}>
       {children}
-      {message && <div className="toast" role="status">{message}</div>}
+      <div role="status">{message && <div className="toast">{message}</div>}</div>
     </ToastContext.Provider>
   )
 }

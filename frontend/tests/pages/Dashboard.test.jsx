@@ -241,3 +241,41 @@ describe('Dashboard device buttons say their state (F6)', () => {
       .toEqual(['طبيعي', 'تسرّب', 'قيد التسخين', 'غير متصل', 'انقطع أثناء تسرّب'])
   })
 })
+
+// F13: an alert that started on another day showed only its time, so a leak
+// open since yesterday at 23:00 read as if it started an hour ago.
+describe('Dashboard alert start time (F13)', () => {
+  const infoBody = () => alertsCard().querySelector('.info-body').textContent
+
+  it('an alert from today shows the time only', async () => {
+    api.alerts.mockResolvedValue(OPEN_ALERT)
+    renderPage(<Dashboard />)
+    await flush()
+    expect(infoBody()).toBe('Started 11:30:00 · peak 1,450 ppm')
+  })
+
+  it('an alert from an earlier day shows the date too, in both languages', async () => {
+    api.alerts.mockResolvedValue({ data: [{ ...OPEN_ALERT.data[0], started_at: '2026-11-20T23:00:00Z' }] })
+    renderPage(<Dashboard />)
+    await flush()
+    expect(infoBody()).toBe('Started 20 Nov, 23:00:00 · peak 1,450 ppm')
+    cleanup()
+    renderPage(<Dashboard />, { lang: 'ar' })
+    await flush()
+    const ar = screen.getByText('التنبيهات').parentElement.querySelector('.info-body').textContent
+    expect(ar).toMatch(/^بدأ 20 نوفمبر.*23:00:00 · الذروة 1,450 ppm$/)
+  })
+})
+
+// SensorCard now uses formatMoment (F13); a device that never sent a
+// reading still shows a dash.
+describe('Dashboard sensor card without a reading', () => {
+  it('shows a dash for the last reading', async () => {
+    api.listDevices.mockResolvedValue([{ ...KITCHEN, last_reading_at: null }])
+    renderPage(<Dashboard />)
+    await flush()
+    const card = screen.getByText('Sensor Status').parentElement
+    expect(card.querySelectorAll('dd')[1].textContent).toBe('—')
+  })
+})
+

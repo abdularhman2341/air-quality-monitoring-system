@@ -1,4 +1,6 @@
+import { useRef } from 'react'
 import { useLanguage } from '../../i18n/LanguageContext'
+import { TABS, TAB_PANEL_ID, tabForKey, tabId } from './historyTabs'
 
 const RANGES = [
   { days: 1, label: 'history.range24h' },
@@ -15,13 +17,32 @@ export function HistoryHead({ tab, onTab }) {
         <h1>{t('history.title')}</h1>
         <p>{t('history.subtitle')}</p>
       </div>
-      <div className="segmented" role="tablist">
-        {['alerts', 'readings'].map((name) => (
-          <button key={name} type="button" role="tab" aria-selected={tab === name} onClick={() => onTab(name)}>
-            {t(`history.tab.${name}`)}
-          </button>
-        ))}
-      </div>
+      <HistoryTabs tab={tab} onTab={onTab} />
+    </div>
+  )
+}
+
+// Only the selected tab is in the Tab order; the arrow keys, Home and End
+// select and focus another (F17).
+function HistoryTabs({ tab, onTab }) {
+  const { t } = useLanguage()
+  const buttons = useRef({})
+  function onKeyDown(event) {
+    const next = tabForKey(event.key, tab)
+    if (!next) return
+    event.preventDefault()
+    onTab(next)
+    buttons.current[next].focus()
+  }
+  return (
+    <div className="segmented" role="tablist" onKeyDown={onKeyDown}>
+      {TABS.map((name) => (
+        <button key={name} type="button" role="tab" id={tabId(name)} aria-controls={TAB_PANEL_ID}
+          aria-selected={tab === name} tabIndex={tab === name ? 0 : -1}
+          ref={(el) => { buttons.current[name] = el }} onClick={() => onTab(name)}>
+          {t(`history.tab.${name}`)}
+        </button>
+      ))}
     </div>
   )
 }
