@@ -72,7 +72,7 @@ describe('Dashboard', () => {
     expect(alertsCard().textContent).toContain('No active alerts')
   })
 
-  it('switches device from its pill, and an offline alarming device shows offline', async () => {
+  it('switches device from its pill, and an offline alarming device shows lost during a leak (F8)', async () => {
     const { container } = renderPage(<Dashboard />)
     await flush()
     fireEvent.click(screen.getByRole('button', { name: /A4:CF:12:3B:9E:7F/ }))
@@ -159,5 +159,85 @@ describe('Dashboard details pinned before the split', () => {
     renderPage(<Dashboard />)
     await flush()
     expect(html(alertsCard(), { outer: true })).toMatchSnapshot()
+  })
+})
+
+// F8: a device that went offline while its alarm was on showed grey
+// "Offline", so the leak disappeared from the page. Decision (23 Nov): its
+// own red state, "Lost during a leak".
+describe('Dashboard device lost during a leak (F8)', () => {
+  const LOST = { ...GARAGE, name: 'Garage' }
+  const QUIET = { ...GARAGE, name: 'Store', latest: { ...GARAGE.latest, alarm_active: false } }
+
+  it('shows the red lost state, still says offline, and does not pulse', async () => {
+    api.listDevices.mockResolvedValue([LOST])
+    const { container } = renderPage(<Dashboard />)
+    await flush()
+    const hero = container.querySelector('.status-hero')
+    expect(hero.className).toBe('status-hero hero-lost')
+    expect(hero.querySelector('.hero-word').textContent).toBe('LOST DURING A LEAK')
+    expect(hero.querySelector('.hero-word').style.color).toBe('var(--danger-ink)')
+    expect(hero.querySelector('.hero-message').textContent).toBe('The sensor stopped reporting while its alarm was on')
+    expect(hero.querySelector('.hero-advice').textContent).toBe('Treat it as a leak until you check the place. Showing the last known reading.')
+    expect(hero.querySelector('.dot').className).toBe('dot ')
+    expect(container.querySelector('.info-card .info-title').textContent).toBe('Offline')
+  })
+
+  it('says it in Arabic', async () => {
+    api.listDevices.mockResolvedValue([LOST])
+    const { container } = renderPage(<Dashboard />, { lang: 'ar' })
+    await flush()
+    expect(container.querySelector('.hero-word').textContent).toBe('انقطع أثناء تسرّب')
+    expect(container.querySelector('.hero-message').textContent).toBe('توقف الحساس عن الإرسال وإنذاره يعمل')
+    expect(container.querySelector('.hero-advice').textContent).toBe('اعتبره تسرّبًا حتى تتحقق من المكان. المعروض آخر قراءة معروفة.')
+  })
+
+  it('an offline device whose last reading had no alarm still shows offline', async () => {
+    api.listDevices.mockResolvedValue([QUIET])
+    const { container } = renderPage(<Dashboard />)
+    await flush()
+    expect(container.querySelector('.status-hero').className).toBe('status-hero hero-offline')
+    expect(container.querySelector('.hero-word').textContent).toBe('OFFLINE')
+  })
+
+  it('an offline device with no readings shows offline', async () => {
+    api.listDevices.mockResolvedValue([{ ...GARAGE, latest: null }])
+    const { container } = renderPage(<Dashboard />)
+    await flush()
+    expect(container.querySelector('.status-hero').className).toBe('status-hero hero-offline')
+  })
+})
+
+// F6: the device buttons showed the state by color only. A state that is not
+// normal now has a word on the button; "normal" is for screen readers only.
+describe('Dashboard device buttons say their state (F6)', () => {
+  const device = (name, fields) => ({ ...KITCHEN, device_id: `A4CF123B9E${name.length}0`, name, ...fields })
+  const ALARM = device('Lab', { latest: { ...KITCHEN.latest, alarm_active: true } })
+  const WARM = device('Hall', { latest: { ...KITCHEN.latest, seq: 3 } })
+  const OFF = device('Store', { connection_state: 'offline' })
+  const LOST = device('Garage', { connection_state: 'offline', latest: { ...KITCHEN.latest, alarm_active: true } })
+  const pill = (name) => screen.getByRole('button', { name: new RegExp(`^${name}`) })
+  const word = (name) => pill(name).querySelector('.pill-state')
+
+  it('each button has its state as text', async () => {
+    api.listDevices.mockResolvedValue([KITCHEN, ALARM, WARM, OFF, LOST])
+    renderPage(<Dashboard />)
+    await flush()
+    expect(pill('Kitchen').textContent).toBe('Kitchen120Normal')
+    expect(word('Kitchen').className).toBe('pill-state sr-only')
+    expect(word('Lab').textContent).toBe('Leak')
+    expect(word('Hall').textContent).toBe('Warming up')
+    expect(word('Store').textContent).toBe('Offline')
+    expect(word('Garage').textContent).toBe('Lost in a leak')
+    expect(word('Lab').className).toBe('pill-state')
+    expect(pill('Garage').className).toBe('device-pill pill-lost')
+  })
+
+  it('in Arabic too', async () => {
+    api.listDevices.mockResolvedValue([KITCHEN, ALARM, WARM, OFF, LOST])
+    renderPage(<Dashboard />, { lang: 'ar' })
+    await flush()
+    expect(['Kitchen', 'Lab', 'Hall', 'Store', 'Garage'].map((n) => word(n).textContent))
+      .toEqual(['طبيعي', 'تسرّب', 'قيد التسخين', 'غير متصل', 'انقطع أثناء تسرّب'])
   })
 })

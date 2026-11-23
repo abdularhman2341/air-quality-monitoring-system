@@ -214,3 +214,107 @@ describe('History refresh', () => {
     expect(api.alerts).toHaveBeenCalledTimes(2)
   })
 })
+
+// F5: the export asked for one page of 1000 rows and said "CSV exported"
+// even when the range had more. It now asks page after page.
+describe('History CSV export of more than 1000 rows (F5)', () => {
+  const alertsWithIds = (from, to) => Array.from({ length: from - to + 1 }, (_v, i) => ({
+    ...ALERTS.data[1], id: from - i,
+  }))
+  const exportNow = async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }))
+    await flush()
+  }
+  const exportedIds = () => downloadCsv.mock.calls[0][2].length
+
+  it('asks page after page until it has every row', async () => {
+    renderPage(<History />)
+    await flush()
+    api.alerts.mockReset()
+      .mockResolvedValueOnce({ total: 2500, data: alertsWithIds(2500, 1501) })
+      .mockResolvedValueOnce({ total: 2500, data: alertsWithIds(1500, 501) })
+      .mockResolvedValueOnce({ total: 2500, data: alertsWithIds(500, 1) })
+    await exportNow()
+    expect(api.alerts.mock.calls.map(([params]) => [params.page, params.limit])).toEqual([[1, 1000], [2, 1000], [3, 1000]])
+    expect(exportedIds()).toBe(2500)
+    expect(screen.getByRole('status').textContent).toBe('CSV exported')
+  })
+
+  it('a row pushed onto the next page by a new one is written once', async () => {
+    renderPage(<History />)
+    await flush()
+    api.alerts.mockReset()
+      .mockResolvedValueOnce({ total: 1500, data: alertsWithIds(1500, 501) })
+      .mockResolvedValueOnce({ total: 1501, data: alertsWithIds(501, 1) })
+    await exportNow()
+    const ids = downloadCsv.mock.calls[0][2].map((row) => row)
+    expect(ids.length).toBe(1500)
+    expect(screen.getByRole('status').textContent).toBe('CSV exported')
+  })
+
+  it('stops after 20 pages and says how many of the rows it saved', async () => {
+    renderPage(<History />)
+    await flush()
+    api.alerts.mockReset().mockImplementation(({ page }) => Promise.resolve({
+      total: 25000, data: alertsWithIds(25000 - (page - 1) * 1000, 24001 - (page - 1) * 1000),
+    }))
+    await exportNow()
+    expect(api.alerts).toHaveBeenCalledTimes(20)
+    expect(exportedIds()).toBe(20000)
+    expect(screen.getByRole('status').textContent).toBe('Exported the newest 20000 of 25000 rows')
+  })
+
+  it('says the same in Arabic', async () => {
+    renderPage(<History />, { lang: 'ar' })
+    await flush()
+    api.alerts.mockReset().mockImplementation(({ page }) => Promise.resolve({
+      total: 25000, data: alertsWithIds(25000 - (page - 1) * 1000, 24001 - (page - 1) * 1000),
+    }))
+    fireEvent.click(screen.getByRole('button', { name: 'تصدير CSV' }))
+    await flush()
+    expect(screen.getByRole('status').textContent).toBe('تم تصدير أحدث 20000 من 25000 صف')
+  })
+
+  it('exactly 1000 rows needs one page', async () => {
+    renderPage(<History />)
+    await flush()
+    api.alerts.mockReset().mockResolvedValue({ total: 1000, data: alertsWithIds(1000, 1) })
+    await exportNow()
+    expect(api.alerts).toHaveBeenCalledTimes(1)
+    expect(exportedIds()).toBe(1000)
+  })
+
+  it('a page shorter than 1000 is the last one, even if the total says more', async () => {
+    renderPage(<History />)
+    await flush()
+    api.alerts.mockReset().mockResolvedValue({ total: 1500, data: alertsWithIds(400, 1) })
+    await exportNow()
+    expect(api.alerts).toHaveBeenCalledTimes(1)
+    expect(exportedIds()).toBe(400)
+  })
+
+  it('readings are paged the same way', async () => {
+    renderPage(<History />)
+    await flush()
+    fireEvent.click(tab('Readings'))
+    await flush()
+    const rows = (from, to) => Array.from({ length: from - to + 1 }, (_v, i) => ({ ...READINGS.data[0], id: from - i }))
+    api.readings.mockReset()
+      .mockResolvedValueOnce({ total: 1200, data: rows(1200, 201) })
+      .mockResolvedValueOnce({ total: 1200, data: rows(200, 1) })
+    await exportNow()
+    expect(api.readings).toHaveBeenLastCalledWith(KITCHEN.device_id, { from: daysAgo(30), page: 2, limit: 1000 })
+    expect(exportedIds()).toBe(1200)
+  })
+
+  it('a failed later page saves nothing and shows the error', async () => {
+    renderPage(<History />)
+    await flush()
+    api.alerts.mockReset()
+      .mockResolvedValueOnce({ total: 1500, data: alertsWithIds(1500, 501) })
+      .mockRejectedValueOnce(apiError('DATABASE_UNAVAILABLE', 'Database is unavailable.', 503))
+    await exportNow()
+    expect(downloadCsv).not.toHaveBeenCalled()
+    expect(screen.getByRole('status').textContent).toBe('Database is unavailable.')
+  })
+})
