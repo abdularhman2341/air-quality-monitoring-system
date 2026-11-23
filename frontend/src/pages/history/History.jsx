@@ -15,7 +15,7 @@ function nameOf(devices, id) {
 // Past alerts and readings of the user's devices, filtered by device and
 // period, a page at a time, with a CSV export of the same filters.
 function History() {
-  const { devices } = useDevices(60000)
+  const { devices, loading: devicesLoading, error: devicesError } = useDevices(60000)
   const query = useHistoryQuery(devices)
   const deviceName = (id) => nameOf(devices, id)
   const { exporting, exportCsv } = useCsvExport(query, deviceName)
@@ -24,7 +24,8 @@ function History() {
     <div className="history">
       <HistoryHead tab={query.tab} onTab={query.setTab} />
       <HistoryFilters query={query} devices={devices} exporting={exporting} onExport={exportCsv} />
-      <ResultsCard query={query} devices={devices} deviceName={deviceName} />
+      <ResultsCard query={query} devices={{ list: devices, loading: devicesLoading, error: devicesError }}
+        deviceName={deviceName} />
     </div>
   )
 }

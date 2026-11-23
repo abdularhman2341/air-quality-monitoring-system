@@ -4,6 +4,7 @@ import { api } from '../../api/client'
 import { useApiData } from '../../hooks/useApiData'
 import { useDevices } from '../../hooks/useDevices'
 import { useLanguage } from '../../i18n/LanguageContext'
+import { alertsOf, readingsOf } from '../../realtime/liveFilters'
 import { deviceState } from './deviceState'
 import DevicePills from './DevicePills'
 import StatusHero from './StatusHero'
@@ -17,17 +18,21 @@ const REFRESH_MS = 60000
 const CHART_POINTS = 30
 
 // The selected device's recent readings and its newest alert. Nothing is
-// asked for while there is no device.
+// asked for while there is no device. Each reloads only on live events about
+// this device that can change it (F10).
 function useDeviceDetails(device) {
+  const id = device?.device_id
   const { data: readingData } = useApiData(
-    () => api.readings(device.device_id, { limit: CHART_POINTS }),
-    device ? `readings|${device.device_id}` : null,
-    REFRESH_MS
+    () => api.readings(id, { limit: CHART_POINTS }),
+    device ? `readings|${id}` : null,
+    REFRESH_MS,
+    readingsOf(id)
   )
   const { data: alertData, error: alertError } = useApiData(
-    () => api.alerts({ device_id: device.device_id, limit: 1 }),
-    device ? `alert|${device.device_id}` : null,
-    REFRESH_MS
+    () => api.alerts({ device_id: id, limit: 1 }),
+    device ? `alert|${id}` : null,
+    REFRESH_MS,
+    alertsOf(id)
   )
   return { readingData, alertData, alertError }
 }

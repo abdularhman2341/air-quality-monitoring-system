@@ -1,6 +1,6 @@
 import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useLanguage } from '../../i18n/LanguageContext'
-import { GAUGE_MAX_PPM, THRESHOLD_PPM, formatPpm, formatTime } from '../../utils/format'
+import { GAUGE_MAX_PPM, THRESHOLD_PPM, formatMoment, formatPpm } from '../../utils/format'
 import { STATE_COLORS } from './deviceState'
 
 // The chart's fixed settings. Each one is passed to its chart part as is;
@@ -41,10 +41,11 @@ function ReadingsCard({ data, state }) {
 }
 
 // The y axis reaches at least GAUGE_MAX_PPM, so the threshold line stays in
-// the same place unless a reading goes higher.
+// the same place unless a reading goes higher. Times from an earlier day
+// show their date (F13).
 function ReadingsChart({ data, colors }) {
   const { locale } = useLanguage()
-  const time = (v) => formatTime(v, locale)
+  const time = (v) => formatMoment(v, locale)
   const chartMax = Math.max(GAUGE_MAX_PPM, ...data.map((r) => r.ppm))
   return (
     <div className="chart" dir="ltr">

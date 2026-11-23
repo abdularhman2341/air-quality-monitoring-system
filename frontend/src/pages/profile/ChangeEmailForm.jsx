@@ -45,7 +45,7 @@ function ChangeEmailForm({ onDone }) {
       <Field label={t('profile.newEmail')} type="email" value={form.email} onChange={form.setEmail}
         autoComplete="email" dir="ltr" required />
       <Field label={t('profile.currentPassword')} type="password" value={form.password} onChange={form.setPassword}
-        autoComplete="current-password" maxLength={72} required />
+        autoComplete="current-password" required />
       <FormError error={form.error} />
       <FormButtons onCancel={onDone} busy={form.busy} disabled={!form.email.trim() || !form.password}
         label={t('profile.saveEmail')} />

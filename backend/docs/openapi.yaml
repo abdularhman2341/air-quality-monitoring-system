@@ -1165,7 +1165,7 @@ components:
     From:
       name: from
       in: query
-      description: ISO 8601 start time (by `started_at`)
+      description: ISO 8601 start time. An alert is included when it overlaps the range (still open, or ended at or after `from`)
       schema: { type: string, format: date-time, example: '2026-10-22T00:00:00Z' }
     To:
       name: to

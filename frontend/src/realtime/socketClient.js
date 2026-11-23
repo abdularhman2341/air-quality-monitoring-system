@@ -18,8 +18,10 @@ function socketUrl () {
   return API_URL.startsWith('http') ? new URL(API_URL).origin : undefined
 }
 
-function notifyListeners () {
-  listeners.forEach((listener) => listener())
+// Each listener gets the event name and its data, so a view can skip events
+// about something it does not show (realtime/liveFilters.js).
+function notifyListeners (event, data) {
+  listeners.forEach((listener) => listener(event, data))
 }
 
 export function connectSocket () {
@@ -28,9 +30,9 @@ export function connectSocket () {
   }
   const current = io(socketUrl(), { auth: (send) => send({ token: getToken() }) })
   socket = current
-  LIVE_EVENTS.forEach((event) => current.on(event, notifyListeners))
+  LIVE_EVENTS.forEach((event) => current.on(event, (data) => notifyListeners(event, data)))
   // Also fires after a reconnect, so anything missed offline is reloaded.
-  current.on('connect', notifyListeners)
+  current.on('connect', () => notifyListeners('connect'))
   // The server closed the connection (session ended or signed out everywhere).
   // Socket.IO does not reconnect by itself in this case.
   current.on('disconnect', (reason) => {

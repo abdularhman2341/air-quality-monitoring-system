@@ -250,3 +250,30 @@ describe('Profile page', () => {
     expect(screen.getByRole('button', { name: 'Delete permanently' }).disabled).toBe(false)
   })
 })
+
+// C3: the current-password fields of the email and delete forms stopped at 72
+// characters and cut the rest without a word, while the backend counts 72
+// bytes. Like sign-in, they now send what was typed and the server answers.
+describe('current password is sent as typed (C3)', () => {
+  const LONG = 'p'.repeat(80)
+
+  it('the email form sends a password longer than 72 characters whole', async () => {
+    const user = userEvent.setup()
+    renderPage(<Profile />)
+    await user.click(screen.getByRole('button', { name: 'Change' }))
+    await user.type(screen.getByLabelText('New email'), 'new@example.com')
+    await user.type(screen.getAllByLabelText('Current password')[0], LONG)
+    await user.click(screen.getByRole('button', { name: 'Save email' }))
+    expect(auth.current.changeEmail).toHaveBeenCalledWith('new@example.com', LONG)
+  })
+
+  it('the delete form does the same', async () => {
+    const user = userEvent.setup()
+    const { container } = renderPage(<Profile />)
+    await user.click(screen.getByRole('button', { name: 'Delete account…' }))
+    await user.type(container.querySelector('.danger-zone input'), LONG)
+    await user.click(screen.getByRole('button', { name: 'Delete permanently' }))
+    expect(auth.current.deleteAccount).toHaveBeenCalledWith(LONG)
+  })
+})
+

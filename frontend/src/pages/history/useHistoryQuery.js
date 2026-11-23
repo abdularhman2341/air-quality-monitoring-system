@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api } from '../../api/client'
 import { useApiData } from '../../hooks/useApiData'
+import { alertsOf, readingsOf } from '../../realtime/liveFilters'
 
 const REFRESH_MS = 60000
 export const PAGE_SIZE = 50
@@ -27,7 +28,9 @@ export function useHistoryQuery(devices) {
     ? api.alerts({ device_id: deviceFilter === 'all' ? undefined : deviceFilter, from: since(days), ...params })
     : api.readings(readingsDevice, { from: since(days), ...params }))
   const key = tab === 'alerts' || readingsDevice ? `${tab}|${selectedDevice}|${days}|${page}` : null
-  const { data, loading, error } = useApiData(() => fetchRows({ page, limit: PAGE_SIZE }), key, REFRESH_MS)
+  // Live events reload only the tab they concern (F10).
+  const live = tab === 'alerts' ? alertsOf(deviceFilter === 'all' ? undefined : deviceFilter) : readingsOf(readingsDevice)
+  const { data, loading, error } = useApiData(() => fetchRows({ page, limit: PAGE_SIZE }), key, REFRESH_MS, live)
   const filter = (set) => (value) => {
     set(value)
     setPage(1)

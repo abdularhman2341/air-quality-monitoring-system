@@ -67,3 +67,31 @@ describe('errorMessages', () => {
     expect(errorMessages.ar.NETWORK_ERROR).toBeTruthy()
   })
 })
+
+// F19: some codes the backend sends had no Arabic text, so Arabic users saw
+// the general "unexpected error" for a database outage or a missing reading.
+// The codes are read from the backend source, so a new one fails this test.
+describe('every backend error code has Arabic text (F19)', () => {
+  // Socket.IO only: it closes the live connection and is never shown.
+  const NOT_SHOWN = new Set(['SERVER_ERROR'])
+
+  function backendCodes() {
+    const dir = fileURLToPath(new URL('../../backend/src/', import.meta.url))
+    const codes = new Set()
+    for (const file of readdirSync(dir, { recursive: true })) {
+      if (!file.endsWith('.js')) continue
+      const code = readFileSync(join(dir, file), 'utf8')
+      for (const match of code.matchAll(/'([A-Z][A-Z_]{4,})'/g)) codes.add(match[1])
+    }
+    return [...codes].filter((code) => !NOT_SHOWN.has(code)).sort()
+  }
+
+  it('finds the codes it checks', () => {
+    expect(backendCodes()).toEqual(expect.arrayContaining(['DATABASE_UNAVAILABLE', 'INVALID_MAC', 'NO_READINGS']))
+  })
+
+  it('has Arabic text for each one', () => {
+    expect(backendCodes().filter((code) => !errorMessages.ar[code])).toEqual([])
+  })
+})
+

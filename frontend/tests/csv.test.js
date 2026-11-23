@@ -24,3 +24,31 @@ describe('cell', () => {
     expect(cell('say "hi"')).toBe('"say ""hi"""')
   })
 })
+
+// F20: a device name such as =HYPERLINK(...) ran as a formula when the CSV
+// was opened in Excel. Text that starts like a formula gets a leading ' so it
+// shows as text (OWASP: CSV injection).
+describe('cell and spreadsheet formulas (F20)', () => {
+  it.each(['=1+1', '+1', '-1', '@SUM(A1)', '\tTAB'])('text starting %j is shown as text', (text) => {
+    expect(cell(text)).toBe(`'${text}`)
+  })
+
+  // A carriage return alone also ends a row in Excel, so it is quoted like \n.
+  it('text starting with a carriage return is shown as text and quoted', () => {
+    expect(cell('\rCR')).toBe(`"'\rCR"`)
+    expect(cell('a\rb')).toBe('"a\rb"')
+  })
+
+  it('quotes still work after the guard', () => {
+    expect(cell('=HYPERLINK("http://x","y")')).toBe(`"'=HYPERLINK(""http://x"",""y"")"`)
+    expect(cell('=1,2')).toBe(`"'=1,2"`)
+  })
+
+  it('numbers stay numbers, and text that does not start like a formula is unchanged', () => {
+    expect(cell(-5)).toBe('-5')
+    expect(cell('Kitchen = main')).toBe('Kitchen = main')
+    expect(cell('2026-11-21T12:00:00Z')).toBe('2026-11-21T12:00:00Z')
+    expect(cell(false)).toBe('false')
+  })
+})
+

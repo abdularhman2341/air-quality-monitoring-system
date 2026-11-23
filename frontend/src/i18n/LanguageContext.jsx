@@ -20,11 +20,23 @@ function initialLanguage() {
   return navigator.language.startsWith('ar') ? 'ar' : 'en'
 }
 
+function applyToDocument(lang) {
+  document.documentElement.lang = lang
+  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
+  return lang
+}
+
+// The first language is put on <html> while the first render runs, before
+// anything is painted. An effect runs after the first paint, so an Arabic
+// page was drawn left to right and then flipped (F16).
+function firstLanguage() {
+  return applyToDocument(initialLanguage())
+}
+
 // Keeps <html lang dir> in step with the language and saves the choice.
 function useDocumentLanguage(lang) {
   useEffect(() => {
-    document.documentElement.lang = lang
-    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
+    applyToDocument(lang)
     try {
       localStorage.setItem(STORAGE_KEY, lang)
     } catch {
@@ -54,7 +66,7 @@ function translator(lang) {
 }
 
 export function LanguageProvider({ children }) {
-  const [lang, setLang] = useState(initialLanguage)
+  const [lang, setLang] = useState(firstLanguage)
   useDocumentLanguage(lang)
   const { t, errorText } = translator(lang)
   const locale = LOCALES[lang]

@@ -1,17 +1,10 @@
 import { useLanguage } from '../../i18n/LanguageContext'
-import { formatDateTime, formatTime } from '../../utils/format'
+import { formatMoment } from '../../utils/format'
 import { STATE_COLORS } from './deviceState'
-
-function isToday(value) {
-  return new Date(value).toDateString() === new Date().toDateString()
-}
 
 // Today's readings show the time only; older ones show the date too.
 function lastReadingText(value, locale) {
-  if (!value) {
-    return '—'
-  }
-  return isToday(value) ? formatTime(value, locale) : formatDateTime(value, locale, true)
+  return value ? formatMoment(value, locale) : '—'
 }
 
 // Whether the device is online, its MAC and when it last sent a reading.
