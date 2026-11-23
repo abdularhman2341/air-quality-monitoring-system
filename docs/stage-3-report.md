@@ -854,7 +854,7 @@ The dashboard uses each event as a signal to reload its data through REST, rathe
 - **O3 – Access control:** API tests as a second account verify that another user's devices return `404`. Account deletion is checked with database queries (no remaining sessions, readings, or owned devices).
 
 **Tools used:**
-- **Backend:** Jest and Supertest (`npm test`, 21 tests in `backend/tests/`) against a separate local test database; manual API tests with `curl` and Postman against the deployed API; the device simulator (`simulateDevice.js`) for MQTT.
+- **Backend:** Jest and Supertest (`npm test`, the suite in `backend/tests/`; counts and coverage in the [Stage 4 report, Section 6.3](stage-4-report.md#63-automated-test-results-21-november-2026-end-of-the-stage)) against a separate local test database; manual API tests with `curl` and Postman against the deployed API; the device simulator (`simulateDevice.js`) for MQTT.
 - **Frontend:** manual testing in the browser in Arabic and English, desktop and mobile; Playwright scripts for the account and sensor flows; `vite build` before each merge.
 - **ESP32:** Serial Monitor to check readings and alarm behavior; a short BOOT press runs a buzzer and LED self-test.
 

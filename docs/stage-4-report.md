@@ -128,13 +128,13 @@ For bug fixes the team used a test-first rule from Sprint 3: a test that reprodu
 | Planned cards completed | 20 (100%) | 14 (100%) | 8 (80%) |
 | Cards added during the sprint and completed | 0 | 0 | 22 of 23 |
 | Velocity (cards completed) | 20 | 14 | 30 |
-| Pull requests merged into `develop` | 22 | 20 | 39 |
+| Pull requests merged | 22 | 20 | 44 |
 
-Totals: 81 pull requests merged between 6 October and 21 November, 197 commits on `develop`.
+Totals: 86 pull requests merged between 6 October and 21 November (including two releases from `develop` into `main` and one sync back), 206 commits on `develop`.
 
 Sprint 3 had the most work because the weekly mentor meetings added requirements (admin dashboard, OTP, third-party email) and acceptance testing found defects that had to be fixed before the end of the stage. Two planned cards were not completed: S3-01 was descoped (Section 3.3) and S3-05 is carried over to Stage 5 (Section 8).
 
-**Bugs:** 62 recorded, 24 fixed (39%), 38 open; critical and high: 8 of 12 fixed (Section 5).
+**Bugs:** 62 recorded, 24 fixed (39%), 38 open; critical and high: 9 of 12 fixed (Section 5).
 
 ---
 
@@ -172,8 +172,9 @@ Each sprint was reviewed in the weekly meetings with the mentor, where the team 
 
 **Feedback and decisions:**
 - 11 November: no remarks.
-- 17 November: most remarks were on the frontend. Large files (some over 400 lines) must be split into components and modules, and functions should stay within 25 lines. The backend now has no file over 400 lines; splitting the large frontend pages is planned for Stage 5 (Section 8).
+- 17 November: most remarks were on the frontend. Large files (some over 400 lines) must be split into components and modules, and functions should stay within 25 lines. On 21 November every file was split to 400 lines or fewer and the limit became a lint error (PR #148); 17 frontend functions were still over 25 lines and were split in Stage 5 (Section 8).
 - New account sign-up must use an emailed code and activate the account in one step (no separate confirmation afterwards). Built and deployed on 21 November (PR #82).
+- Last day: the dashboard says when it does not know the alert status instead of "all normal" (F3, PR #151).
 - Last day: the dashboard shows a **Warming up** state for the first 2 minutes after the device powers up, when readings are not accurate yet and the device does not alarm (the reading counter `seq` starts again at every power-up).
 - **Descoped:** S3-01 (daily aggregation). The History page meets the need with the alerts list and the readings table filtered by 24 hours, 7 days or 30 days, plus CSV export.
 
@@ -204,7 +205,7 @@ Each sprint was reviewed in the weekly meetings with the mentor, where the team 
 | Automated tests found real defects before users did: B1 (MQTT messages acknowledged before they were saved, so a database outage could lose readings) and the review findings R1-R5. | Many requirements arrived during the sprint (admin dashboard, OTP, email), so the board fell behind the work. | Each new requirement gets a card the same day; the board was brought up to date on 21 November. |
 | Test-first fixes and mutation testing showed each fix is covered: a test fails on the old code and passes on the new one. | A local folder with old files was copied over newer ones and reverted a fix on two branches. CI caught it before merging. | Files are prepared in a new, empty folder, and each pushed branch is compared with the reviewed copy before merging. |
 | Real-device tests on production (alarm, both emails, reconnect) gave evidence for O1 and O2. | One branch was created from an old copy of `develop` and conflicted with a squashed merge. | Always `git pull` on `develop` before creating a branch. |
-| | Several frontend pages grew beyond 400 lines. | Split them into components with functions under 25 lines (Stage 5). |
+| | Several frontend pages grew beyond 400 lines. | Split them into components on 21 November (PR #148); the 25-line function limit was finished in Stage 5. |
 
 ---
 
@@ -212,13 +213,13 @@ Each sprint was reviewed in the weekly meetings with the mentor, where the team 
 
 Every bug is a [GitHub issue](https://github.com/abdularhman2341/air-quality-monitoring-system/issues?q=is%3Aissue+label%3Abug) with an area label (`firmware`, `backend`, `frontend`) and a severity label; a fixed issue is closed with a link to its pull request, and an open one carries the `stage-5` label. IDs: **W** firmware, **B** backend, **F** frontend from the full bug sweep of 7 November (46 findings on `b36fcd0`); **V**, **M**, **S**, **P**, **R**, **C** from later validation, session and production tests, code review and code cleanup; `#` numbers were reported as issues directly. From 11 November every fix starts with a test that fails on the old code.
 
-**Summary:** 62 bugs recorded, 24 fixed (39%), 38 open and carried over to Stage 5. Critical and high: 8 of 12 fixed. The four open high-severity bugs are listed first in 5.2.
+**Summary:** 62 bugs recorded, 24 fixed (39%), 38 open and carried over to Stage 5. Critical and high: 9 of 12 fixed. The three open high-severity bugs are listed first in 5.2.
 
 | Area | Fixed | Open |
 | --- | --- | --- |
 | Firmware | 2 | 12 |
-| Backend | 15 | 9 |
-| Frontend | 7 | 17 |
+| Backend | 14 | 10 |
+| Frontend | 8 | 16 |
 
 ### 5.1 Fixed
 
@@ -232,6 +233,7 @@ Every bug is a [GitHub issue](https://github.com/abdularhman2341/air-quality-mon
 | R1 | backend | High | Sign-up had no limit per address; each sign-up sends an email from the quota shared with gas alert emails | Code review, 19 Nov | [#82](https://github.com/abdularhman2341/air-quality-monitoring-system/pull/82) |
 | F1 | frontend | High | An old tab shows account A but reads and writes account B's data | Bug sweep, 7 Nov | [#51](https://github.com/abdularhman2341/air-quality-monitoring-system/pull/51) |
 | F2 | frontend | High | Any temporary server error signs the user out | Bug sweep, 7 Nov | [#66](https://github.com/abdularhman2341/air-quality-monitoring-system/pull/66) |
+| F3 | frontend | High | The dashboard says all is normal when the alerts request fails or is still loading | Bug sweep, 7 Nov | [#151](https://github.com/abdularhman2341/air-quality-monitoring-system/pull/151) |
 | [#42](https://github.com/abdularhman2341/air-quality-monitoring-system/issues/42) | backend | Medium | An alert stays open after a power loss during an alarm (also W5) | Outage test | [#86](https://github.com/abdularhman2341/air-quality-monitoring-system/pull/86) (the first reading without the alarm closes the open alert) |
 | B3 | backend | Medium | Pairing codes were 6 digits and could be guessed | Bug sweep, 7 Nov | [#55](https://github.com/abdularhman2341/air-quality-monitoring-system/pull/55) (8-character codes, about 10^12 combinations) |
 | B6 | backend | Medium | Readings and alarms of a device with no owner are shown to its next owner (also R4) | Bug sweep, 7 Nov | [#84](https://github.com/abdularhman2341/air-quality-monitoring-system/pull/84) |
@@ -243,7 +245,6 @@ Every bug is a [GitHub issue](https://github.com/abdularhman2341/air-quality-mon
 | F4 | frontend | Medium | A late 401 from an old session signs out the new user | Bug sweep, 7 Nov | [#51](https://github.com/abdularhman2341/air-quality-monitoring-system/pull/51) |
 | S1 | frontend | Medium | Clearing the browser storage did not sign out the open tab | Session tests, 9 Nov | [#52](https://github.com/abdularhman2341/air-quality-monitoring-system/pull/52) |
 | S2 | frontend | Medium | The token check timer was removed by mistake in #54 | Session tests, 10 Nov | [#57](https://github.com/abdularhman2341/air-quality-monitoring-system/pull/57) |
-| B9 | backend | Low | Alerts with the same start second can repeat or disappear between pages | Bug sweep, 7 Nov | [#55](https://github.com/abdularhman2341/air-quality-monitoring-system/pull/55) (ordered by start time, then id) |
 | V3 | backend | Low | Token and session expiry were computed one second apart | Validation review, 7 Nov | [#50](https://github.com/abdularhman2341/air-quality-monitoring-system/pull/50) |
 | [#43](https://github.com/abdularhman2341/air-quality-monitoring-system/issues/43) | firmware | Low | Wrong NTP comment and old start-up banner in the firmware | Code review | [#86](https://github.com/abdularhman2341/air-quality-monitoring-system/pull/86) |
 | F9 | frontend | Low | Account created but automatic sign-in failed; retrying said the email is taken | Bug sweep, 7 Nov | [#82](https://github.com/abdularhman2341/air-quality-monitoring-system/pull/82) (sign-up rebuilt with the activation code) |
@@ -251,12 +252,13 @@ Every bug is a [GitHub issue](https://github.com/abdularhman2341/air-quality-mon
 
 ### 5.2 Open (carried over to Stage 5)
 
+**Update, 23 November (Stage 5):** every backend and frontend bug in this table was fixed in Stage 5 ([#158](https://github.com/abdularhman2341/air-quality-monitoring-system/pull/158), [#159](https://github.com/abdularhman2341/air-quality-monitoring-system/pull/159), [#161](https://github.com/abdularhman2341/air-quality-monitoring-system/pull/161), [#162](https://github.com/abdularhman2341/air-quality-monitoring-system/pull/162); B9 in the pull request that corrected this report) and its issue was closed with a link to the fix. The 12 firmware bugs (W2-W14 and #41) remain open as known limitations. The table keeps the state at the end of Stage 4.
+
 | ID | Area | Severity | Bug | Found by |
 | --- | --- | --- | --- | --- |
 | W2 | firmware | High | A disconnected sensor or cut wire reads as clean air (about 11 ppm) | Bug sweep, 7 Nov |
 | W3 | firmware | High | The 2-minute warm-up comes back every ~49.7 days when millis() wraps | Bug sweep, 7 Nov |
 | [#41](https://github.com/abdularhman2341/air-quality-monitoring-system/issues/41) | firmware | High | A leak that starts and ends while the device is offline is missing from the web history | Outage test |
-| F3 | frontend | High | The dashboard says all is normal when the alerts request fails or is still loading | Bug sweep, 7 Nov |
 | B4 | backend | Medium | A repeated alarm_on that arrives after alarm_off opens an alert that never closes | Bug sweep, 7 Nov |
 | B5 | backend | Medium | One optional field out of range rejects the whole reading | Bug sweep, 7 Nov |
 | W4 | firmware | Medium | Any restart (including the 3-second BOOT press) restarts the warm-up while the sensor is hot | Bug sweep, 7 Nov |
@@ -272,6 +274,7 @@ Every bug is a [GitHub issue](https://github.com/abdularhman2341/air-quality-mon
 | B10 | backend | Low | A reading does not mark the device online | Bug sweep, 7 Nov |
 | B11 | backend | Low | The seedDevices script has no production guard | Bug sweep, 7 Nov |
 | B13 | backend | Low | prisma/README.md names src/index.js instead of src/server.js | Bug sweep, 7 Nov |
+| B9 | backend | Low | Alerts with the same start second can repeat or disappear between pages (#55 fixed the admin list; the user's History still sorted by start time only) | Bug sweep, 7 Nov |
 | C1 | backend | Low | The pairing code is case-sensitive | Code cleanup, 17 Nov |
 | C2 | backend | Low | Email subjects use two product names (AQMS and Gas Monitor) | Code cleanup, 17 Nov |
 | W10 | firmware | Low | The Wi-Fi setup page pauses the alarm for about 22 s when saving | Bug sweep, 7 Nov |
@@ -292,7 +295,7 @@ Every bug is a [GitHub issue](https://github.com/abdularhman2341/air-quality-mon
 | F20 | frontend | Low | A device name starting with = runs as a formula in Excel after CSV export | Bug sweep, 7 Nov |
 | C3 | frontend | Low | The profile password fields limit 72 characters; the backend limit is 72 bytes | Code cleanup, 17 Nov |
 
-The open high-severity bugs never stop the local alarm from sounding in a leak it can detect: W2 and W3 are firmware cases where the device cannot detect gas (a disconnected sensor, a warm-up every ~49.7 days), #41 affects only the web record of a leak, and F3 affects only the dashboard's alert card when a request fails. They are the first Stage 5 tasks.
+The open high-severity bugs never stop the local alarm from sounding in a leak it can detect: W2 and W3 are firmware cases where the device cannot detect gas (a disconnected sensor, a warm-up every ~49.7 days), and #41 affects only the web record of a leak. They are the first Stage 5 tasks for the firmware.
 
 ---
 
@@ -317,11 +320,11 @@ GitHub Actions runs on every pull request and every push to `develop` ([runs](ht
 | Firmware | Compiles the ESP32 sketch with the pinned libraries (`arduino-cli compile`) |
 | Broker | `shellcheck` on the Mosquitto start script |
 
-### 6.3 Automated test results (21 November 2026)
+### 6.3 Automated test results (21 November 2026, end of the stage)
 
-**Backend:** 254 tests in 17 files, all passing. 67 unit tests and 187 integration tests (Supertest against the real Express app and a real PostgreSQL test database).
+**Backend:** 268 tests in 18 files, all passing. 67 unit tests, 187 integration tests (Supertest against the real Express app and a real PostgreSQL test database) and 14 characterization tests.
 
-**Coverage** (measured on 21 November): 93.2% of lines, 91.9% of statements, 91.3% of functions, 79.7% of branches.
+**Coverage** (measured at the end of the stage): 94.2% of lines, 93.0% of statements, 92.5% of functions, 81.8% of branches.
 
 | File | Tests | Type | What it proves |
 | --- | --- | --- | --- |
@@ -342,8 +345,9 @@ GitHub Actions runs on every pull request and every push to `develop` ([runs](ht
 | `deviceTime.test.js` | 7 | Unit | Which device times are trusted |
 | `mqtt-ack.test.js` | 4 | Unit | A message is acknowledged only after it is saved (B1) |
 | `client-ip-config.test.js` | 5 | Unit | Reading the visitor address from the proxy header |
+| `refactor-safety.test.js` | 14 | Characterization | Records what code with no direct test did before it was split into shorter functions (PR #148); passes unchanged before and after |
 
-**Frontend:** 41 unit tests (Vitest) in 5 files: password rules, number and time formatting, the sensor warm-up check, CSV export, the API client, and a check that every translation key used in the code exists in Arabic and English.
+**Frontend:** 115 tests (Vitest) in 11 files. Unit tests: password rules, number and time formatting, the sensor warm-up check, CSV export, the API client, and a check that every translation key used in the code exists in Arabic and English. Page tests (React Testing Library): the dashboard, sign-in and sign-up, the profile, the session rules, and the data-loading hook.
 
 **Mutation testing** on the Sprint 3 fixes: B1 5/5, sign-up code 7/7, R2/R3 8/8, R4 5/5, R5 5/5, #42 2/2 changes caught.
 
@@ -383,7 +387,7 @@ GitHub Actions runs on every pull request and every push to `develop` ([runs](ht
 
 | Item | Reason |
 | --- | --- |
-| Split the large frontend pages into components with functions under 25 lines (mentor feedback, 17 Nov) | The profile page is about 500 lines; History, Dashboard and the admin panels are the next largest |
+| Finish the 25-line function limit in the frontend (mentor feedback, 17 Nov) | Every file was already 400 lines or fewer (PR #148); 17 frontend functions were still longer than 25 lines |
 | S3-05 physical reference test | No reference gas instrument was available, so the sensor is not calibrated; the dashboard labels every value as estimated |
-| The open bugs in Section 5.2, starting with the four high-severity ones (W2, W3, #41, F3) | Most open firmware bugs need a change on the real device and a physical test |
+| The open bugs in Section 5.2, starting with the three high-severity ones (W2, W3, #41) | Most open firmware bugs need a change on the real device and a physical test |
 | Merge `develop` into `main` for the final submission | Planned in the SCM strategy |

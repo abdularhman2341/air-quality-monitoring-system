@@ -154,7 +154,9 @@ class Alert extends BaseModel {
       prisma.alert.findMany({
         where,
         select: COLUMNS,
-        orderBy: { started_at: 'desc' },
+        // id breaks ties, so alerts of two devices that start in the same
+        // second keep one order across pages (B9; #55 did the admin list).
+        orderBy: [{ started_at: 'desc' }, { id: 'desc' }],
         take: limit,
         skip: (page - 1) * limit,
       }),

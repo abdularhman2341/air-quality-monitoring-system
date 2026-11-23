@@ -57,3 +57,30 @@ describe('alerts that overlap the range (F14)', () => {
     expect(ids(until)).toEqual([2, 1]);
   });
 });
+
+// B9: alerts that start in the same second (two devices, "all devices")
+// had no second sort key on the user's history, so a page could repeat or
+// skip one. #55 fixed the admin list only; this is the user's list.
+describe('alerts with the same start time keep one order (B9)', () => {
+  const OTHER = 'AAAAAAAAAA08';
+  let user;
+  beforeEach(async () => {
+    user = await signUp();
+    await linkDevice(user, MAC, await registerDevice(MAC));
+    await linkDevice(user, OTHER, await registerDevice(OTHER));
+    const same = new Date('2026-11-15T00:00:00Z');
+    for (const [id, device] of [[1, MAC], [2, OTHER], [3, MAC], [4, OTHER]]) {
+      await prisma.alert.create({
+        data: { id, device_id: device, started_at: same, ended_at: new Date(same.getTime() + id * 1000), peak_lpg_ppm_est: 1200, threshold_ppm: 1000 },
+      });
+    }
+  });
+
+  test('newest id first, and two pages hold every alert once', async () => {
+    const all = await api().get('/api/v1/alerts').set(user.auth).expect(200);
+    expect(all.body.data.map((a) => a.id)).toEqual([4, 3, 2, 1]);
+    const first = await api().get('/api/v1/alerts').query({ page: 1, limit: 2 }).set(user.auth).expect(200);
+    const second = await api().get('/api/v1/alerts').query({ page: 2, limit: 2 }).set(user.auth).expect(200);
+    expect([...first.body.data, ...second.body.data].map((a) => a.id)).toEqual([4, 3, 2, 1]);
+  });
+});
