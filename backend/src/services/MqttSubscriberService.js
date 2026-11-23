@@ -19,6 +19,8 @@ const isTimestamp = (value) => typeof value === 'string' && !Number.isNaN(Date.p
 const VALIDATORS = {
   readings: (message) => {
     if (!isNumber(message.lpg_ppm_est)) return 'lpg_ppm_est must be a number';
+    // readings_ppm_positive refuses it, so it could never be saved (B5).
+    if (message.lpg_ppm_est < 0) return 'lpg_ppm_est must not be negative';
     if (typeof message.alarm_active !== 'boolean') return 'alarm_active must be true or false';
     if (!isTimestamp(message.ts)) return 'ts must be an ISO date';
     return null;
