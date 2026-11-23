@@ -13,6 +13,7 @@ class ReadingService {
     const reading = await Reading.record(deviceId, payload);
     if (!reading) return null;
     await deviceService.updateLastReading(deviceId, reading.reading_time);
+    await deviceService.markOnline(deviceId, ownerId);
     if (reading.alarm_active) {
       await alertService.updatePeak(deviceId, reading.lpg_ppm_est);
     } else {

@@ -79,7 +79,7 @@ npx prisma migrate deploy
 Recommended: make it part of the start command in `package.json`, so every deploy applies new migrations first:
 
 ```json
-"start": "prisma migrate deploy && node src/index.js"
+"start": "prisma migrate deploy && node src/server.js"
 ```
 
 Never run the seed on production.

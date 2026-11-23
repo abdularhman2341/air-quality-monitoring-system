@@ -45,6 +45,18 @@ class DeviceService {
   // from its Last Will when the broker loses it.
   async updateDeviceStatus(deviceId, state, ownerId) {
     await Device.setConnectionState(deviceId, state);
+    this.announceStatus(deviceId, state, ownerId);
+  }
+
+  // A new reading proves the device is connected, even when its "online"
+  // status message was lost (B10). The owner is told only on a change.
+  async markOnline(deviceId, ownerId) {
+    if (await Device.setConnectionState(deviceId, 'online')) {
+      this.announceStatus(deviceId, 'online', ownerId);
+    }
+  }
+
+  announceStatus(deviceId, state, ownerId) {
     console.log(`MQTT ${deviceId} is ${state}`);
     realtimeGateway.emitToOwner(ownerId, 'device:status', { device_id: deviceId, state, ts: new Date().toISOString() });
   }

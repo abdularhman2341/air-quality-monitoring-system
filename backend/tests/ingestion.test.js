@@ -165,6 +165,15 @@ describe('alerts', () => {
     expect(open.peak_lpg_ppm_est).toBe(1400);
   });
 
+  // B8: a second alarm_on while the alert is open carries a new level.
+  test('a higher alarm_on during an open alert raises its peak, a lower one does not (B8)', async () => {
+    await publish(MAC, 'alarms', alarm('alarm_on', 1200));
+    await publish(MAC, 'alarms', { ...alarm('alarm_on', 1600), ts: new Date(Date.now() + 1000).toISOString() });
+    await publish(MAC, 'alarms', { ...alarm('alarm_on', 1300), ts: new Date(Date.now() + 2000).toISOString() });
+    const alerts = await prisma.alert.findMany();
+    expect(alerts.map((a) => a.peak_lpg_ppm_est)).toEqual([1600]);
+  });
+
   test('a copy of the newest of two closed alerts is ignored (B4)', async () => {
     const t = Date.now();
     const at = (ms) => new Date(t + ms).toISOString();

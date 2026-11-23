@@ -76,7 +76,10 @@ function optionalDate(value, field) {
     return null;
   }
   const date = new Date(value);
-  if (typeof value !== 'string' || Number.isNaN(date.getTime())) {
+  // Prisma sends dates to PostgreSQL with a 4-digit year (0000 to 9999); a
+  // JavaScript date goes far beyond, and reached the database as a 500 (B7).
+  const year = date.getUTCFullYear();
+  if (typeof value !== 'string' || Number.isNaN(date.getTime()) || year < 0 || year > 9999) {
     throw invalid(`${field} must be a valid ISO 8601 date.`);
   }
   return date;
