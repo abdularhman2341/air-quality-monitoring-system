@@ -22,6 +22,7 @@ class AlertService {
 
     if (event.event === 'alarm_on') {
       if (openAlert) return openAlert;
+      if (await this.isLateRepeat(deviceId, time)) return null;
       const alert = await Alert.open(deviceId, event.lpg_ppm_est, event.threshold_ppm, time);
       console.log(`MQTT ${deviceId} alert ${alert.id} opened`);
       realtimeGateway.emitToOwner(ownerId, 'alert:new', alert);
@@ -31,6 +32,18 @@ class AlertService {
 
     if (!openAlert) return null;
     return this.closeAlert(openAlert, time, ownerId);
+  }
+
+  // QoS 1 can deliver an alarm_on again after its alarm_off was handled (the
+  // acknowledgement was lost). The copy has the same time as the start of
+  // the device's newest alert, which is already closed, so it must not open
+  // a new alert that no alarm_off would ever close (B4). An alarm_on with a
+  // different time is a new alarm, even if it is older than the last end:
+  // after a power cut a reading closes the alert (issue #42), and the next
+  // alarm_on may carry a time from before that reading.
+  async isLateRepeat(deviceId, time) {
+    const latest = await Alert.findLatest(deviceId);
+    return Boolean(latest && latest.ended_at && latest.started_at.getTime() === time.getTime());
   }
 
   // A device that loses power during an alarm never sends alarm_off, and it

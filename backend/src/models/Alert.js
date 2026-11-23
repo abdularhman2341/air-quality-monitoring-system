@@ -24,6 +24,15 @@ class Alert extends BaseModel {
     return row ? new Alert(row) : null;
   }
 
+  // The start and end of this device's newest alert, or null when it has none.
+  static async findLatest(deviceId) {
+    return prisma.alert.findFirst({
+      where: { device_id: deviceId },
+      select: { started_at: true, ended_at: true },
+      orderBy: [{ started_at: 'desc' }, { id: 'desc' }],
+    });
+  }
+
   static async open(deviceId, lpgPpmEst, thresholdPpm, startedAt) {
     const row = await prisma.alert.create({
       data: {

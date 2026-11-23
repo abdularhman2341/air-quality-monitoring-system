@@ -15,8 +15,16 @@ const COLUMNS = {
 };
 
 // Optional sensor fields: a missing or wrong value is stored as null instead
-// of rejecting the whole reading.
-const integerOrNull = (value) => (Number.isInteger(value) ? value : null);
+// of rejecting the whole reading. "Wrong" includes a value the database would
+// refuse: seq is a 32-bit INTEGER column, and readings_adc_range allows 0 to
+// 4095 (the ESP32's 12-bit ADC). A refused row is an error, and an error
+// leaves the MQTT message unacknowledged, so it would come back forever (B5).
+const INT32_MIN = -(2 ** 31);
+const INT32_MAX = 2 ** 31 - 1;
+const ADC_MAX = 4095;
+const integerOrNull = (value, min = INT32_MIN, max = INT32_MAX) => (
+  Number.isInteger(value) && value >= min && value <= max ? value : null
+);
 const numberOrNull = (value) => (typeof value === 'number' && Number.isFinite(value) ? value : null);
 
 class Reading extends BaseModel {
@@ -60,7 +68,7 @@ class Reading extends BaseModel {
     const data = {
       device_id: deviceId,
       seq: integerOrNull(payload.seq),
-      sensor_raw_adc: integerOrNull(payload.sensor_raw_adc),
+      sensor_raw_adc: integerOrNull(payload.sensor_raw_adc, 0, ADC_MAX),
       sensor_voltage: numberOrNull(payload.sensor_voltage),
       rs_ro_ratio: numberOrNull(payload.rs_ro_ratio),
       lpg_ppm_est: payload.lpg_ppm_est,
